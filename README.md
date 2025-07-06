@@ -12,6 +12,7 @@ This project analyzes and visualizes Turkish economic indicators, specifically c
 - **Interactive Visualization**: Generates comprehensive charts with multiple indicators
 - **Flexible Date Ranges**: Customizable start and end dates for analysis
 - **Data Normalization**: All indices normalized to base 100 for easy comparison
+- **Chart Export**: Save visualizations as high-quality PNG files
 
 ## Installation
 
@@ -54,6 +55,7 @@ python enf.py --enag --start_date 01-09-2018 --end_date 01-07-2025
 | `--end_date` | `-e` | End date in DD-MM-YYYY format | 01-07-2025 |
 | `--enag` | - | Include ENAG data in analysis | False |
 | `--verbose` | `-v` | Enable verbose output | False |
+| `--save` | - | Save chart as PNG file | False |
 
 ## Data Sources
 
@@ -72,6 +74,13 @@ The tool generates a comprehensive visualization showing:
 5. **ENAG Average** (optional): 12-month average of ENAG and USD/TRY
 
 All normalized indices start at 100 on the specified start date for easy comparison.
+
+### File Output
+
+When using the `--save` flag, charts are automatically saved as PNG files with descriptive names:
+- Format: `DD_MM_YYYY_DD_MM_YYYY_TUFE_USD[_ENAG].png`
+- Example: `01_01_2020_01_12_2023_TUFE_USD_ENAG.png`
+- High resolution (300 DPI) for publication quality
 
 ## File Structure
 
@@ -141,6 +150,16 @@ python enf.py --enag --start_date 01-09-2018 --end_date 01-07-2025 --verbose
 ### Short-term Analysis
 ```bash
 python enf.py --start_date 01-01-2023 --end_date 01-06-2023
+```
+
+### Save Chart to File
+```bash
+python enf.py --save --start_date 01-01-2020 --end_date 01-12-2023
+```
+
+### Complete Analysis with File Save
+```bash
+python enf.py --save --enag --start_date 01-09-2018 --end_date 01-07-2025 --verbose
 ```
 
 ## Notes
