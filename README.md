@@ -1,174 +1,125 @@
-# Turkish Economic Data Analysis Tool
+# Türkiye Ekonomik Veri Analiz Araçları
 
-This project analyzes and visualizes Turkish economic indicators, specifically comparing the Turkish Consumer Price Index (TÜFE) with USD/TRY exchange rates and optionally including ENAG (Alternative Inflation Index) data.
+Bu proje, Türkiye'nin ekonomik göstergelerini analiz etmek için bir dizi Python aracı içerir. TÜFE (Tüketici Fiyat Endeksi), USD/TRY döviz kuru, ENAG (Enflasyon Araştırma Grubu) verileri ve REDK (Reel Efektif Döviz Kuru) gibi çeşitli ekonomik göstergeleri analiz etmek ve görselleştirmek için kullanılabilir.
 
-![Example Output](Figure_1.png)
+![Örnek Çıktı](Figure_1.png)
 
-## Features
+## Gereksinimler
 
-- **TÜFE Analysis**: Fetches and normalizes Turkish Consumer Price Index data from EVDS API
-- **USD/TRY Exchange Rate**: Compares inflation with currency devaluation
-- **ENAG Integration**: Optional inclusion of alternative inflation index data
-- **Interactive Visualization**: Generates comprehensive charts with multiple indicators
-- **Flexible Date Ranges**: Customizable start and end dates for analysis
-- **Data Normalization**: All indices normalized to base 100 for easy comparison
-- **Chart Export**: Save visualizations as high-quality PNG files
-
-## Installation
-
-### Prerequisites
-
-- Python 3.7+
-- EVDS API access (Turkish Central Bank data service)
-
-### Required Packages
+- Python 3.6+
+- pandas
+- matplotlib
+- numpy
+- evds (TCMB EVDS API'si için)
 
 ```bash
-pip install evds pandas matplotlib numpy argparse
+pip install pandas matplotlib numpy evds
 ```
 
-## Usage
+## Modüller
 
-### Basic Usage
+### enf.py
+
+TÜFE ve USD/TRY döviz kuru karşılaştırması yapar.
 
 ```bash
-python enf.py
+python enf.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--enag] [--verbose] [--normalize] [--save]
 ```
 
-### With Custom Date Range
+Parametreler:
+- `--start_date`: Başlangıç tarihi (varsayılan: 01-09-2020)
+- `--end_date`: Bitiş tarihi (varsayılan: 01-07-2025)
+- `--enag`: ENAG verilerini dahil et
+- `--verbose`: Detaylı çıktı gösterir
+- `--normalize`: Verileri normalize eder
+- `--save`: Grafiği PNG dosyası olarak kaydeder
+
+### enag.py
+
+ENAG enflasyon verilerini içerir ve kümülatif yüzde hesaplama fonksiyonları sağlar.
 
 ```bash
-python enf.py --start_date 01-01-2020 --end_date 01-12-2024
+python enag.py [--verbose]
 ```
 
-### Including ENAG Data
+Parametreler:
+- `--verbose`: Detaylı çıktı gösterir
+
+### enag_subs_tufe_2.py
+
+ENAG aylık yüzde değişimi ile TÜFE aylık değişiminin yarısı arasındaki farkı hesaplar.
 
 ```bash
-python enf.py --enag --start_date 01-09-2018 --end_date 01-07-2025
+python enag_subs_tufe_2.py [--graph] [--verbose]
 ```
 
-### Command Line Arguments
+Parametreler:
+- `--graph`: Sonuçları grafikle gösterir
+- `--verbose`: Detaylı çıktı gösterir
 
-| Argument | Short | Description | Default |
-|----------|-------|-------------|---------|
-| `--start_date` | `-s` | Start date in DD-MM-YYYY format | 01-09-2018 |
-| `--end_date` | `-e` | End date in DD-MM-YYYY format | 01-07-2025 |
-| `--enag` | - | Include ENAG data in analysis | False |
-| `--verbose` | `-v` | Enable verbose output | False |
-| `--save` | - | Save chart as PNG file | False |
+### redk.py
 
-## Data Sources
+TP.RK.T1.Y (Reel Efektif Döviz Kuru) verisini analiz eder ve ENAG-TÜFE/2 değerleri ile kümülatif çarpımını hesaplar.
 
-- **TÜFE**: Turkish Consumer Price Index from EVDS API (Series: TP.FE.OKTG01)
-- **USD/TRY**: USD to Turkish Lira exchange rate from EVDS API (Series: TP.DK.USD.S.YTL)
-- **ENAG**: Alternative inflation index with monthly data from September 2020 onwards
+```bash
+python redk.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--verbose] [--save]
+```
 
-## Output
+Parametreler:
+- `--start_date`: Başlangıç tarihi (varsayılan: 01-01-2020)
+- `--end_date`: Bitiş tarihi (varsayılan: 01-06-2025)
+- `--verbose`: Detaylı çıktı gösterir
+- `--save`: Grafiği PNG dosyası olarak kaydeder
 
-The tool generates a comprehensive visualization showing:
+### tufe_filter.py
 
-1. **TÜFE Index**: Consumer price index normalized to starting value
-2. **USD/TRY Index**: Exchange rate normalized to starting value
-3. **USD/TRY Raw Values**: Actual exchange rate values
-4. **ENAG Index** (optional): Alternative inflation index
-5. **ENAG Average** (optional): 12-month average of ENAG and USD/TRY
+TÜFE verilerini filtrelemek için yardımcı modül. Özellikle Eylül 2020 öncesi veriler için kullanılır.
 
-All normalized indices start at 100 on the specified start date for easy comparison.
+## Örnek Kullanım
 
-### File Output
+### TÜFE ve USD/TRY Karşılaştırması
 
-When using the `--save` flag, charts are automatically saved as PNG files with descriptive names:
-- Format: `DD_MM_YYYY_DD_MM_YYYY_TUFE_USD[_ENAG].png`
-- Example: `01_01_2020_01_12_2023_TUFE_USD_ENAG.png`
-- High resolution (300 DPI) for publication quality
+```bash
+python enf.py --save
+```
 
-## File Structure
+Bu komut, TÜFE ve USD/TRY verilerini karşılaştırır ve sonuçları grafikle gösterir.
+
+### ENAG Dahil TÜFE ve USD/TRY Karşılaştırması
+
+```bash
+python enf.py --enag --save
+```
+
+Bu komut, TÜFE, USD/TRY ve ENAG verilerini karşılaştırır ve sonuçları grafikle gösterir.
+
+### REDK ve ENAG-TÜFE/2 Kümülatif Çarpımı
+
+```bash
+python redk.py --save
+```
+
+Bu komut, REDK verisini çeker ve 09-2020'den itibaren ENAG-TÜFE/2 değerleri ile kümülatif çarpımını hesaplar. Sonuçları grafikle gösterir ve kaydeder.
+
+## Veri Kaynakları
+
+- TÜFE ve REDK verileri: TCMB EVDS API'si
+- ENAG verileri: Enflasyon Araştırma Grubu
+- USD/TRY verileri: TCMB EVDS API'si
+
+## Dosya Yapısı
 
 ```
 testo/
-├── enf.py              # Main analysis script
-├── enag.py             # ENAG data processing module
-├── tufe_filter.py      # TÜFE data filtering utilities
-├── Figure_1.png        # Example output visualization
-└── README.md          # This file
+├── enf.py              # Ana analiz scripti (TÜFE ve USD/TRY)
+├── enag.py             # ENAG veri modülü
+├── tufe_filter.py      # TÜFE veri filtreleme yardımcıları
+├── redk.py             # Reel Efektif Döviz Kuru analizi
+├── enag_subs_tufe_2.py # ENAG-TÜFE/2 analizi
+├── Figure_1.png        # Örnek çıktı görseli
+└── README.md           # Bu dosya
 ```
 
-## Module Details
+## Lisans
 
-### enf.py
-Main script that:
-- Fetches data from EVDS API
-- Processes and normalizes data
-- Generates comparative visualizations
-- Handles command line arguments
-
-### enag.py
-Contains:
-- Monthly ENAG percentage data from September 2020
-- Cumulative percentage calculation functions
-- Date range validation
-
-### tufe_filter.py
-Utility functions for:
-- Filtering TÜFE data by date ranges
-- Data type conversion and validation
-- Handling pre-September 2020 data
-
-## Special Features
-
-### Historical Data Handling
-For start dates before September 2020, the tool:
-- Filters TÜFE data until August 2020
-- Combines with ENAG data from September 2020 onwards
-- Maintains data continuity and normalization
-
-### Data Visualization
-- Displays values at regular intervals on the chart
-- Uses different colors and styles for each indicator
-- Includes both normalized indices and raw values
-- Automatic chart scaling and formatting
-
-## API Configuration
-
-The script uses the EVDS API with a predefined API key. For production use, consider:
-- Using environment variables for API keys
-- Implementing proper error handling for API failures
-- Adding rate limiting for API requests
-
-## Examples
-
-### Basic Analysis
-```bash
-python enf.py --start_date 01-01-2020 --end_date 01-12-2023
-```
-
-### Comprehensive Analysis with ENAG
-```bash
-python enf.py --enag --start_date 01-09-2018 --end_date 01-07-2025 --verbose
-```
-
-### Short-term Analysis
-```bash
-python enf.py --start_date 01-01-2023 --end_date 01-06-2023
-```
-
-### Save Chart to File
-```bash
-python enf.py --save --start_date 01-01-2020 --end_date 01-12-2023
-```
-
-### Complete Analysis with File Save
-```bash
-python enf.py --save --enag --start_date 01-09-2018 --end_date 01-07-2025 --verbose
-```
-
-## Notes
-
-- Start dates before September 2020 will trigger special handling for ENAG data
-- The tool automatically warns about data availability for early dates
-- All financial data is sourced from official Turkish economic institutions
-- Visualizations include both trend analysis and specific data point values
-
-## License
-
-This project is for educational and research purposes. Please ensure compliance with EVDS API terms of service when using this tool. 
+Bu proje açık kaynaklıdır. 
