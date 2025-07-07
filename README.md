@@ -193,12 +193,12 @@ Parametreler:
 - Detaylı fiyat analizi ve yıllık değişim hesaplaması
 - Dinamik grafik etiketleme (veri yoğunluğuna göre)
 
-### ev_fiyat_usd_analysis.py
+### tcmb_fiyat_usd_analysis.py
 
 TCMB EVDS API'sinden TP.BIRIMFIYAT.TR (TL bazında ev fiyat endeksi) ve USD/TRY kuru verilerini çekip USD bazında ev fiyat endeksi hesaplar ve analiz eder.
 
 ```bash
-python ev_fiyat_usd_analysis.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--save] [--save_name FILENAME] [--comparison] [--usd_only] [--verbose] [--api_key API_KEY]
+python tcmb_fiyat_usd_analysis.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--save] [--save_name FILENAME] [--comparison] [--usd_only] [--verbose] [--api_key API_KEY]
 ```
 
 Parametreler:
@@ -224,13 +224,13 @@ Parametreler:
 
 ```bash
 # Varsayılan karşılaştırmalı analiz (2010'dan bugüne)
-python ev_fiyat_usd_analysis.py --save
+python tcmb_fiyat_usd_analysis.py --save
 
 # Sadece USD bazlı tek panel analiz
-python ev_fiyat_usd_analysis.py --usd_only --save --verbose
+python tcmb_fiyat_usd_analysis.py --usd_only --save --verbose
 
 # Özel tarih aralığı ile detaylı analiz
-python ev_fiyat_usd_analysis.py --start_date 01-01-2015 --end_date 01-01-2025 --comparison --save_name "ev_fiyat_2015_2025.png" --verbose
+python tcmb_fiyat_usd_analysis.py --start_date 01-01-2015 --end_date 01-01-2025 --comparison --save_name "ev_fiyat_2015_2025.png" --verbose
 ```
 
 ### tufe_filter.py
@@ -274,19 +274,19 @@ Bu komut, Big Mac Endeksi verilerini analiz eder, Türkiye'nin Big Mac dolar fiy
 ### Ev Fiyat Endeksi USD Bazlı Analizi
 
 ```bash
-python ev_fiyat_usd_analysis.py --save --verbose
+python tcmb_fiyat_usd_analysis.py --save --verbose
 ```
 
 Bu komut, TCMB'den TL bazında ev fiyat endeksi ve USD/TRY kuru verilerini çeker, USD bazında ev fiyat endeksi hesaplar ve TL vs USD karşılaştırmalı analiz yapar.
 
 ```bash
-python ev_fiyat_usd_analysis.py --usd_only --save
+python tcmb_fiyat_usd_analysis.py --usd_only --save
 ```
 
 Bu komut, sadece USD bazında ev fiyat endeksini tek grafikte trend çizgisi ile gösterir.
 
 ```bash
-python ev_fiyat_usd_analysis.py --start_date 01-01-2015 --end_date 01-01-2025 --comparison --save --verbose
+python tcmb_fiyat_usd_analysis.py --start_date 01-01-2015 --end_date 01-01-2025 --comparison --save --verbose
 ```
 
 Bu komut, 2015-2025 dönemini analiz eder ve kapsamlı üç panel karşılaştırma yapar.
@@ -311,7 +311,7 @@ EconomicalDataTurkey/
 ├── redk.py                 # Reel Efektif Döviz Kuru analizi
 ├── enag_subs_tufe_2.py     # ENAG-TÜFE/2 analizi
 ├── big_mac_analysis.py     # Big Mac Endeksi analizi
-├── ev_fiyat_usd_analysis.py # Ev fiyat endeksi USD bazlı analiz
+├── tcmb_fiyat_usd_analysis.py # Ev fiyat endeksi USD bazlı analiz
 ├── big-mac-full-index.csv  # Big Mac Endeksi verileri (sadece Türkiye)
 ├── Figure_1.png            # Örnek çıktı görseli
 ├── REDK_Basit_Carpim_[tarih].png      # REDK üç panel analizi

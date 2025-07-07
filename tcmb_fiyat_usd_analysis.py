@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Ev Fiyat Endeksi USD Bazlı Analiz
-TP.KFE.TR (TL bazında ev fiyat endeksi) / USD/TRY ile USD bazında ev fiyat endeksi hesaplar
+Ev fiyat endeksi (varsayılan: TP.KFE.TR) / USD/TRY ile USD bazında ev fiyat endeksi hesaplar
 """
 
 from evds import evdsAPI
@@ -21,13 +21,14 @@ plt.rcParams['axes.unicode_minus'] = False
 # EVDS API Key
 API_KEY = 'kk11ju7Bis'
 
-def fetch_house_price_data(start_date, end_date, api_key=API_KEY, verbose=False):
+def fetch_house_price_data(start_date, end_date, series_name="TP.KFE.TR", api_key=API_KEY, verbose=False):
     """
     TCMB'den ev fiyat endeksi ve USD/TRY verilerini çeker
     
     Args:
         start_date: Başlangıç tarihi (DD-MM-YYYY formatında)
         end_date: Bitiş tarihi (DD-MM-YYYY formatında)
+        series_name: Ev fiyat endeksi serisi kodu (varsayılan: TP.KFE.TR)
         api_key: EVDS API anahtarı
         verbose: Detaylı çıktı göster
         
@@ -37,11 +38,11 @@ def fetch_house_price_data(start_date, end_date, api_key=API_KEY, verbose=False)
     evds = evdsAPI(api_key)
     
     try:
-        print(f"Ev fiyat endeksi ve USD/TRY verileri çekiliyor: {start_date} - {end_date}")
+        print(f"Ev fiyat endeksi ({series_name}) ve USD/TRY verileri çekiliyor: {start_date} - {end_date}")
         
         # Ev fiyat endeksi verisi - çeyreklik
         df_house, house_column = get_evds_data_and_normalize(
-            ["TP.KFE.TR"], 
+            [series_name], 
             start_date, 
             end_date, 
             frequency=5,  # Aylık
@@ -457,6 +458,191 @@ def plot_usd_house_price_only(df, save=False, save_name=None, start_date=None, e
     
     return stats
 
+def plot_multiple_series(series_names, start_date, end_date, comparison, usd_only, verbose, save, save_name):
+    """
+    Birden fazla seriyi alt alta plotlar
+    
+    Args:
+        series_names: Seri kodları listesi
+        start_date: Başlangıç tarihi
+        end_date: Bitiş tarihi
+        comparison: Karşılaştırmalı mod
+        usd_only: Sadece USD modu
+        verbose: Detaylı çıktı
+        save: Kaydet
+        save_name: Dosya adı
+        
+    Returns:
+        results_dict: Her seri için sonuçlar
+    """
+    results_dict = {}
+    all_data = {}
+    
+    # Önce tüm serilerin verilerini çek
+    for series in series_names:
+        if verbose:
+            print(f"\n{series} serisi işleniyor...")
+        
+        df = fetch_house_price_data(start_date, end_date, series, verbose=verbose)
+        if df is not None:
+            all_data[series] = df
+            # İstatistikleri hesapla
+            stats = calculate_house_price_statistics(df, 'Ev_Fiyat_USD', verbose=verbose)
+            results_dict[series] = {'usd_stats': stats}
+        else:
+            print(f"Uyarı: {series} serisi için veri alınamadı!")
+    
+    if not all_data:
+        print("Hiçbir seri için veri alınamadı!")
+        return None
+    
+    # Grafik oluştur
+    if comparison:
+        plot_multiple_series_comparison(all_data, start_date, end_date, save, save_name, verbose)
+    elif usd_only:
+        plot_multiple_series_usd_only(all_data, start_date, end_date, save, save_name, verbose)
+    else:
+        # Varsayılan olarak USD only
+        plot_multiple_series_usd_only(all_data, start_date, end_date, save, save_name, verbose)
+    
+    return results_dict
+
+def plot_multiple_series_comparison(all_data, start_date, end_date, save, save_name, verbose):
+    """Birden fazla seri için karşılaştırmalı grafik (3 panel her seri için)"""
+    num_series = len(all_data)
+    
+    # Her seri için 3 panel, toplamda 3*num_series panel
+    fig, axes = plt.subplots(num_series, 3, figsize=(20, 6*num_series))
+    
+    if num_series == 1:
+        axes = axes.reshape(1, -1)
+    
+    colors = ['#2c3e50', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c']
+    
+    for i, (series_name, df) in enumerate(all_data.items()):
+        color = colors[i % len(colors)]
+        
+        # TL Panel
+        ax1 = axes[i, 0]
+        ax1.plot(df.index, df['Ev_Fiyat_TL'], color=color, linewidth=2, label=f'{series_name} (TL)')
+        ax1.set_title(f'{series_name} - TL Bazında', fontsize=12, fontweight='bold')
+        ax1.set_ylabel('Endeks Değeri (TL)', fontsize=10)
+        ax1.grid(True, alpha=0.3)
+        ax1.legend()
+        
+        # USD Panel
+        ax2 = axes[i, 1]
+        ax2.plot(df.index, df['Ev_Fiyat_USD'], color=color, linewidth=2, label=f'{series_name} (USD)')
+        ax2.set_title(f'{series_name} - USD Bazında', fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Endeks Değeri (USD)', fontsize=10)
+        ax2.grid(True, alpha=0.3)
+        ax2.legend()
+        
+        # USD/TRY Panel
+        ax3 = axes[i, 2]
+        ax3.plot(df.index, df['USD_TRY'], color='#e74c3c', linewidth=2, label='USD/TRY')
+        ax3.set_title('USD/TRY Kuru (Referans)', fontsize=12, fontweight='bold')
+        ax3.set_ylabel('USD/TRY', fontsize=10)
+        ax3.grid(True, alpha=0.3)
+        ax3.legend()
+        
+        # X ekseni formatı - sadece son satır için
+        if i == num_series - 1:
+            for ax in [ax1, ax2, ax3]:
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
+                ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+                plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+                ax.set_xlabel('Tarih', fontsize=10)
+        else:
+            for ax in [ax1, ax2, ax3]:
+                ax.set_xticklabels([])
+    
+    plt.suptitle('Ev Fiyat Endeksleri Karşılaştırması (Çoklu Seri)', fontsize=16, fontweight='bold', y=0.98)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.93)
+    
+    # Kaydet
+    if save:
+        if save_name:
+            filename = save_name
+        else:
+            start_str = start_date.replace('-', '_')
+            end_str = end_date.replace('-', '_')
+            filename = f"EvFiyat_Coklu_Karsilastirma_{start_str}_{end_str}.png"
+        
+        plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"Grafik kaydedildi: {filename}")
+    
+    plt.show()
+
+def plot_multiple_series_usd_only(all_data, start_date, end_date, save, save_name, verbose):
+    """Birden fazla seri için sadece USD bazlı grafikler"""
+    num_series = len(all_data)
+    
+    fig, axes = plt.subplots(num_series, 1, figsize=(16, 5*num_series))
+    
+    if num_series == 1:
+        axes = [axes]
+    
+    colors = ['#27ae60', '#3498db', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c']
+    
+    for i, (series_name, df) in enumerate(all_data.items()):
+        ax = axes[i]
+        color = colors[i % len(colors)]
+        
+        # Ana çizgi
+        ax.plot(df.index, df['Ev_Fiyat_USD'], color=color, linewidth=2.5, label=f'{series_name} (USD)')
+        
+        # İstatistikler
+        stats = calculate_house_price_statistics(df, 'Ev_Fiyat_USD', verbose=False)
+        
+        if stats:
+            # Min/Max/Son değerler
+            min_idx = df['Ev_Fiyat_USD'].idxmin()
+            max_idx = df['Ev_Fiyat_USD'].idxmax()
+            
+            ax.plot(min_idx, df.loc[min_idx, 'Ev_Fiyat_USD'], 'go', markersize=8, label=f'Min: {stats["min"]:.1f}')
+            ax.plot(max_idx, df.loc[max_idx, 'Ev_Fiyat_USD'], 'ro', markersize=8, label=f'Max: {stats["max"]:.1f}')
+            ax.plot(df.index[-1], df['Ev_Fiyat_USD'].iloc[-1], 'bo', markersize=10, label=f'Son: {stats["current"]:.1f}')
+            
+            # Trend çizgisi
+            x_numeric = np.arange(len(df))
+            z = np.polyfit(x_numeric, df['Ev_Fiyat_USD'], 1)
+            p = np.poly1d(z)
+            ax.plot(df.index, p(x_numeric), "--", alpha=0.7, color='gray', label=f'Trend')
+        
+        ax.set_title(f'{series_name} - USD Bazında Ev Fiyat Endeksi', fontsize=14, fontweight='bold')
+        ax.set_ylabel('USD Endeks Değeri', fontsize=11)
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc='upper left')
+        
+        # X ekseni formatı - sadece son grafik için
+        if i == num_series - 1:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+            ax.set_xlabel('Tarih', fontsize=11)
+        else:
+            ax.set_xticklabels([])
+    
+    plt.suptitle('Ev Fiyat Endeksleri USD Bazlı Analiz (Çoklu Seri)', fontsize=16, fontweight='bold', y=0.98)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.93)
+    
+    # Kaydet
+    if save:
+        if save_name:
+            filename = save_name
+        else:
+            start_str = start_date.replace('-', '_')
+            end_str = end_date.replace('-', '_')
+            filename = f"EvFiyat_Coklu_USD_{start_str}_{end_str}.png"
+        
+        plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"Grafik kaydedildi: {filename}")
+    
+    plt.show()
+
 def parse_date(date_str):
     """Tarih string'ini datetime objesine çevirir"""
     try:
@@ -464,14 +650,15 @@ def parse_date(date_str):
     except ValueError:
         raise argparse.ArgumentTypeError(f"Geçersiz tarih formatı: {date_str}. DD-MM-YYYY formatında olmalı.")
 
-def analyze_house_price_usd(start_date='01-01-2010', end_date=None, comparison=True, usd_only=False, 
-                           verbose=False, save=False, save_name=None):
+def analyze_house_price_usd(start_date='01-01-2010', end_date=None, series_name=["TP.KFE.TR"], 
+                           comparison=True, usd_only=False, verbose=False, save=False, save_name=None):
     """
     Ev fiyat endeksi USD analizi yapan ana fonksiyon
     
     Args:
         start_date: Başlangıç tarihi (DD-MM-YYYY formatında)
         end_date: Bitiş tarihi (DD-MM-YYYY formatında, None ise bugün)
+        series_name: Ev fiyat endeksi serisi kodu(ları) listesi (varsayılan: ["TP.KFE.TR"])
         comparison: Karşılaştırmalı grafik çiz
         usd_only: Sadece USD bazlı grafik çiz
         verbose: Detaylı çıktı göster
@@ -479,23 +666,35 @@ def analyze_house_price_usd(start_date='01-01-2010', end_date=None, comparison=T
         save_name: Özel dosya adı
         
     Returns:
-        df: İşlenmiş veri içeren dataframe
-        results: Analiz sonuçları
+        results_dict: Her seri için analiz sonuçları içeren sözlük
     """
     # Bitiş tarihi varsayılan olarak bugün
     if end_date is None:
         end_date = datetime.now().strftime('%d-%m-%Y')
     
+    # Eğer tek string gelirse listeye çevir
+    if isinstance(series_name, str):
+        series_name = [series_name]
+    
     if verbose:
-        print(f"Ev fiyat endeksi USD analizi başlatılıyor...")
+        print(f"Analiz edilecek seriler: {', '.join(series_name)}")
         print(f"Tarih aralığı: {start_date} - {end_date}")
     
+    # Birden fazla seri varsa alt alta plot yap
+    if len(series_name) > 1:
+        return plot_multiple_series(series_name, start_date, end_date, comparison, usd_only, verbose, save, save_name)
+    
+    # Tek seri için eski fonksiyonları kullan
+    single_series = series_name[0]
+    if verbose:
+        print(f"{single_series} Fiyat endeksi (USD) analizi başlatılıyor...")
+    
     # Veri çek
-    df = fetch_house_price_data(start_date, end_date, verbose=verbose)
+    df = fetch_house_price_data(start_date, end_date, single_series, verbose=verbose)
     
     if df is None:
         print("Veri çekilemedi, program sonlandırılıyor.")
-        return None, None
+        return None
     
     results = None
     
@@ -527,7 +726,7 @@ def analyze_house_price_usd(start_date='01-01-2010', end_date=None, comparison=T
         )
         results = {'usd_stats': stats}
     
-    return df, results
+    return {single_series: results}
 
 if __name__ == "__main__":
     # Argparse setup
@@ -536,6 +735,8 @@ if __name__ == "__main__":
                        help='Başlangıç tarihi (DD-MM-YYYY formatında, varsayılan: 01-01-2010)')
     parser.add_argument('--end_date', '-e', type=str, default=None,
                        help='Bitiş tarihi (DD-MM-YYYY formatında, varsayılan: bugün)')
+    parser.add_argument('--series_name', type=str, nargs='+', default=['TP.KFE.TR'],
+                       help='Ev fiyat endeksi serisi kodu(ları) (varsayılan: TP.KFE.TR). Birden fazla seri için boşlukla ayırın')
     parser.add_argument('--save', action='store_true',
                        help='Grafiği PNG dosyası olarak kaydet')
     parser.add_argument('--save_name', type=str,
@@ -568,9 +769,10 @@ if __name__ == "__main__":
         exit(1)
     
     # Analiz yap
-    df, results = analyze_house_price_usd(
+    results_dict = analyze_house_price_usd(
         start_date=args.start_date,
         end_date=args.end_date,
+        series_name=args.series_name,
         comparison=args.comparison,
         usd_only=args.usd_only,
         verbose=args.verbose,
@@ -579,33 +781,36 @@ if __name__ == "__main__":
     )
     
     # Sonuçları yazdır
-    if args.verbose and results:
+    if args.verbose and results_dict:
         print("\n" + "="*50)
         print("ÖZET İSTATİSTİKLER")
         print("="*50)
         
-        if 'usd_stats' in results:
-            usd_stats = results['usd_stats']
-            print(f"USD Bazlı Ev Fiyat Endeksi:")
-            print(f"  Veri Sayısı: {usd_stats['count']}")
-            print(f"  Ortalama: {usd_stats['mean']:.3f}")
-            print(f"  Medyan: {usd_stats['median']:.3f}")
-            print(f"  Standart Sapma: {usd_stats['std']:.3f}")
-            print(f"  Minimum: {usd_stats['min']:.3f}")
-            print(f"  Maksimum: {usd_stats['max']:.3f}")
-            print(f"  İlk Değer: {usd_stats['start']:.3f}")
-            print(f"  Son Değer: {usd_stats['current']:.3f}")
-            print(f"  Toplam Değişim: {usd_stats['total_change']:.2f}%")
-            print(f"  Yıllık Ortalama Değişim: {usd_stats['annual_change']:.2f}%")
-        
-        if 'tl_stats' in results:
-            tl_stats = results['tl_stats']
-            print(f"\nTL Bazlı Ev Fiyat Endeksi:")
-            print(f"  Toplam Değişim: {tl_stats['total_change']:.2f}%")
-            print(f"  Yıllık Ortalama Değişim: {tl_stats['annual_change']:.2f}%")
+        for series_name, results in results_dict.items():
+            print(f"\n>>> {series_name} <<<")
             
-        if 'usdtry_stats' in results:
-            fx_stats = results['usdtry_stats']
-            print(f"\nUSD/TRY Döviz Kuru:")
-            print(f"  Toplam Değişim: {fx_stats['total_change']:.2f}%")
-            print(f"  Yıllık Ortalama Değişim: {fx_stats['annual_change']:.2f}%") 
+            if results and 'usd_stats' in results:
+                usd_stats = results['usd_stats']
+                print(f"USD Bazlı Ev Fiyat Endeksi:")
+                print(f"  Veri Sayısı: {usd_stats['count']}")
+                print(f"  Ortalama: {usd_stats['mean']:.3f}")
+                print(f"  Medyan: {usd_stats['median']:.3f}")
+                print(f"  Standart Sapma: {usd_stats['std']:.3f}")
+                print(f"  Minimum: {usd_stats['min']:.3f}")
+                print(f"  Maksimum: {usd_stats['max']:.3f}")
+                print(f"  İlk Değer: {usd_stats['start']:.3f}")
+                print(f"  Son Değer: {usd_stats['current']:.3f}")
+                print(f"  Toplam Değişim: {usd_stats['total_change']:.2f}%")
+                print(f"  Yıllık Ortalama Değişim: {usd_stats['annual_change']:.2f}%")
+            
+            if results and 'tl_stats' in results:
+                tl_stats = results['tl_stats']
+                print(f"\nTL Bazlı Ev Fiyat Endeksi:")
+                print(f"  Toplam Değişim: {tl_stats['total_change']:.2f}%")
+                print(f"  Yıllık Ortalama Değişim: {tl_stats['annual_change']:.2f}%")
+                
+            if results and 'usdtry_stats' in results:
+                fx_stats = results['usdtry_stats']
+                print(f"\nUSD/TRY Döviz Kuru:")
+                print(f"  Toplam Değişim: {fx_stats['total_change']:.2f}%")
+                print(f"  Yıllık Ortalama Değişim: {fx_stats['annual_change']:.2f}%") 
