@@ -79,7 +79,7 @@ def fetch_and_process_redk_data(start_date, end_date, api_key='kk11ju7Bis', verb
     
     return df_redk, start_idx
 
-def calculate_redk_multipliers(df_redk, start_idx, data, verbose=False):
+def calculate_redk_multipliers(df_redk, start_idx, data, average_enag_tufe=False, enag_only=False, verbose=False):
     """
     REDK değerlerini çarpanlarla çarpar.
     
@@ -97,8 +97,14 @@ def calculate_redk_multipliers(df_redk, start_idx, data, verbose=False):
 
     tufe_data = data["TÜFE Endeksi"]
     enag_and_tufe_avg_data = data["ENAG Ortalama (12 Ay)"]
+    enag_data = data["ENAG Endeksi"]
     usd_value = data["USD Ham Değer"]
-    calculated_values = (enag_and_tufe_avg_data + tufe_data) / 2
+    if average_enag_tufe:
+        calculated_values = enag_and_tufe_avg_data
+    elif enag_only:
+        calculated_values = enag_data
+    else:
+        calculated_values = tufe_data
 
     # Kümülatif çarpım için yeni kolon oluştur
     df_redk["Çarpım Sonucu"] = np.nan
@@ -160,13 +166,24 @@ parser.add_argument('--end_date', '-e',
                     help='Bitiş tarihi (DD-MM-YYYY formatında, default: 01-01-2025)')
 parser.add_argument('--verbose', '-v', action='store_true', help='Verbose mod')
 parser.add_argument('--save', action='store_true', help='Grafiği dosya olarak kaydet')
+parser.add_argument('--save_name', type=str, help='Grafiği dosya olarak kaydet')
 parser.add_argument('--normalize', action='store_true', help='Normalize et')
+parser.add_argument('--average_enag_tufe', action='store_true', help='ENAG ve TÜFE ortalamasını kullan')
+parser.add_argument('--enag_only', action='store_true', help='ENAG verisini kullan')
+parser.add_argument('--tufe_only', action='store_true', help='TÜFE verisini kullan')
+parser.add_argument('--add_big_mac', action='store_true', help='Big Mac verisini kullan')
+parser.add_argument('--same_scale', action='store_true', help='Aynı eksen skalası kullan')
 args = parser.parse_args()
 
 if __name__ == "__main__":
     start_date = args.start_date
     end_date = args.end_date
-
+    if args.average_enag_tufe and args.enag_only:
+        print("Hata: average_enag_tufe ve enag_only aynı anda kullanılamaz!")
+        exit(1)
+    if args.same_scale and args.add_big_mac:
+        print("Hata: same_scale ve add_big_mac aynı anda kullanılamaz!")
+        exit(1)
     print(f"TP.RK.T1.Y verisi çekiliyor: {start_date} - {end_date}")
 
     data = analyze_economic_data(
@@ -184,121 +201,129 @@ if __name__ == "__main__":
         exit(1)
         
     # REDK değerlerini çarpanlarla çarp
-    df_redk = calculate_redk_multipliers(df_redk, start_idx, data, verbose=args.verbose)
+    df_redk = calculate_redk_multipliers(df_redk, start_idx, data, average_enag_tufe=args.average_enag_tufe, enag_only=args.enag_only, verbose=args.verbose)
 
     # Big Mac verisini oku
-    print("\nBig Mac verisi okunuyor...")
-    df_bigmac = read_big_mac_data('big-mac-full-index.csv', 
-                                  start_date=start_date, 
-                                  end_date=end_date, 
-                                  expand_monthly=True)
+    if args.add_big_mac:
+        print("\nBig Mac verisi okunuyor...")
+        df_bigmac = read_big_mac_data('big-mac-full-index.csv', 
+                                    start_date=start_date, 
+                                    end_date=end_date, 
+                                    expand_monthly=True)
     
-    # Grafik oluştur - 3 alt grafik
-    plt.figure(figsize=(16, 15))
+    if not args.same_scale:
+            # Grafik oluştur - 3 alt grafik
+        num_plots = 3 if args.add_big_mac else 2
+        num_plots = num_plots + 1 if args.tufe_only else num_plots
+        plt.figure(figsize=(16, 15))
 
-    # İlk grafik: REDK
-    plt.subplot(3, 1, 1)
-    plt.plot(df_redk["Tarih"], df_redk["TP_RK_T1_Y"], 
-            label="TP.RK.T1.Y", linewidth=2, color='blue')
-    plt.title(f"TP.RK.T1.Y Veri Analizi ({start_date} - {end_date})", fontsize=14)
-    plt.ylabel("Değer")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    # X ekseni formatını ayarla - 6 ayda bir (tarihleri doğru formatla)
-    ax1 = plt.gca()
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
-    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-    plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45)
-
-    # Her 10 datada bir değer göster
-    step = max(1, len(df_redk) // 10)
-    for i in range(0, len(df_redk), step):
-        date = df_redk["Tarih"].iloc[i]
-        value = df_redk["TP_RK_T1_Y"].iloc[i]
-        if pd.notna(value) and np.isfinite(value):
-            plt.text(date, value, f'{value:.1f}', 
-                    ha='center', va='bottom', fontsize=8, color='blue')
-
-    # İkinci grafik: (ENAG + TÜFE)/2 Yeniden Oranlı
-    plt.subplot(3, 1, 2)
-    plt.plot(df_redk["Tarih"], df_redk["Çarpım Sonucu"], 
-            label="(ENAG + TÜFE)/2 Yeniden Oranlı", linewidth=2, color='green')
-    plt.title(f"(ENAG + TÜFE)/2 Yeniden Oranlı", fontsize=14)
-    plt.ylabel("Değer")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    # X ekseni formatını ayarla - 6 ayda bir (tarihleri doğru formatla)
-    ax2 = plt.gca()
-    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
-    ax2.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-    plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
-
-    # Her 10 datada bir değer göster
-    valid_indices = df_redk.index[df_redk["Çarpım Sonucu"].notna()]
-    step = max(1, len(valid_indices) // 10)
-    for i in range(0, len(valid_indices), step):
-        idx = valid_indices[i]
-        date = df_redk.loc[idx, "Tarih"]
-        value = df_redk.loc[idx, "Çarpım Sonucu"]
-        if pd.notna(value) and np.isfinite(value):
-            plt.text(date, value, f'{value:.1f}', 
-                    ha='center', va='bottom', fontsize=8, color='green')
-
-    # Üçüncü grafik: Big Mac Dolar Fiyatları
-    plt.subplot(3, 1, 3)
-    if df_bigmac is not None:
-        plt.plot(df_bigmac['date'], df_bigmac['dollar_price'], 
-                marker='o', linewidth=2, markersize=4, 
-                color='#e74c3c', markerfacecolor='white', 
-                markeredgecolor='#e74c3c', markeredgewidth=1)
-        
-        plt.title('Türkiye Big Mac Dolar Fiyatları', fontsize=14)
-        plt.xlabel("Tarih")
-        plt.ylabel("Dolar Fiyatı ($)")
+        # İlk grafik: REDK
+        plt.subplot(num_plots, 1, 1)
+        plt.plot(df_redk["Tarih"], df_redk["TP_RK_T1_Y"], 
+                label="TP.RK.T1.Y", linewidth=2, color='blue')
+        plt.title(f"TP.RK.T1.Y Veri Analizi ({start_date} - {end_date})", fontsize=14)
+        plt.ylabel("Değer")
+        plt.legend()
         plt.grid(True, alpha=0.3)
-        
-        # X ekseni formatını ayarla - 6 ayda bir (Big Mac için de)
-        ax3 = plt.gca()
-        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
-        ax3.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-        plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45)
-        
-        # Y ekseni formatı
-        ax3.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:.2f}'))
-        
-        # Her 5 datada bir değer göster
-        for i in range(0, len(df_bigmac), 5):
-            date = df_bigmac['date'].iloc[i]
-            price = df_bigmac['dollar_price'].iloc[i]
-            if pd.notna(price) and np.isfinite(price):
-                plt.text(date, price, f'${price:.2f}', 
-                        ha='center', va='bottom', fontsize=7, color='red')
-        
-        # Son değeri vurgula
-        last_date = df_bigmac['date'].iloc[-1]
-        last_price = df_bigmac['dollar_price'].iloc[-1]
-        plt.text(last_date, last_price + 0.2, f'${last_price:.2f}', 
-                ha='center', va='bottom', fontsize=8, fontweight='bold', 
-                bbox=dict(boxstyle='round,pad=0.2', facecolor='lightgreen', alpha=0.8))
-    else:
-        plt.text(0.5, 0.5, 'Big Mac verisi yüklenemedi', ha='center', va='center', 
-                transform=plt.gca().transAxes, fontsize=12)
-        plt.title('Big Mac Verisi - Hata', fontsize=14)
 
-    plt.tight_layout()
+        # X ekseni formatını ayarla - 6 ayda bir (tarihleri doğru formatla)
+        ax1 = plt.gca()
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
+        ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+        plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45)
+
+        # Her 10 datada bir değer göster
+        step = max(1, len(df_redk) // 10)
+        for i in range(0, len(df_redk), step):
+            date = df_redk["Tarih"].iloc[i]
+            value = df_redk["TP_RK_T1_Y"].iloc[i]
+            if pd.notna(value) and np.isfinite(value):
+                plt.text(date, value, f'{value:.1f}', 
+                        ha='center', va='bottom', fontsize=8, color='blue')
+
+        # İkinci grafik: (ENAG + TÜFE)/2 Yeniden Oranlı
+        plt.subplot(num_plots, 1, 2)
+        plt.plot(df_redk["Tarih"], df_redk["Çarpım Sonucu"], 
+                label="(ENAG + TÜFE)/2 Yeniden Oranlı", linewidth=2, color='green')
+        plt.title(f"(ENAG + TÜFE)/2 Yeniden Oranlı", fontsize=14)
+        plt.ylabel("Değer")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+
+        # X ekseni formatını ayarla - 6 ayda bir (tarihleri doğru formatla)
+        ax2 = plt.gca()
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
+        ax2.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
+
+        # Her 10 datada bir değer göster
+        valid_indices = df_redk.index[df_redk["Çarpım Sonucu"].notna()]
+        step = max(1, len(valid_indices) // 10)
+        for i in range(0, len(valid_indices), step):
+            idx = valid_indices[i]
+            date = df_redk.loc[idx, "Tarih"]
+            value = df_redk.loc[idx, "Çarpım Sonucu"]
+            if pd.notna(value) and np.isfinite(value):
+                plt.text(date, value, f'{value:.1f}', 
+                        ha='center', va='bottom', fontsize=8, color='green')
+
+        # Üçüncü grafik: Big Mac Dolar Fiyatları
+        if args.add_big_mac:
+            if df_bigmac is not None:
+                plt.subplot(num_plots, 1, 3)
+                plt.plot(df_bigmac['date'], df_bigmac['dollar_price'], 
+                        marker='o', linewidth=2, markersize=4, 
+                        color='#e74c3c', markerfacecolor='white', 
+                        markeredgecolor='#e74c3c', markeredgewidth=1)
+                
+                plt.title('Türkiye Big Mac Dolar Fiyatları', fontsize=14)
+                plt.xlabel("Tarih")
+                plt.ylabel("Dolar Fiyatı ($)")
+                plt.grid(True, alpha=0.3)
+                
+                # X ekseni formatını ayarla - 6 ayda bir (Big Mac için de)
+                ax3 = plt.gca()
+                ax3.xaxis.set_major_formatter(mdates.DateFormatter('%m-%Y'))
+                ax3.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+                plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45)
+                
+                # Y ekseni formatı
+                ax3.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:.2f}'))
+                
+                # Her 5 datada bir değer göster
+                for i in range(0, len(df_bigmac), 5):
+                    date = df_bigmac['date'].iloc[i]
+                    price = df_bigmac['dollar_price'].iloc[i]
+                    if pd.notna(price) and np.isfinite(price):
+                        plt.text(date, price, f'${price:.2f}', 
+                                ha='center', va='bottom', fontsize=7, color='red')
+                
+                # Son değeri vurgula
+                last_date = df_bigmac['date'].iloc[-1]
+                last_price = df_bigmac['dollar_price'].iloc[-1]
+                plt.text(last_date, last_price + 0.2, f'${last_price:.2f}', 
+                        ha='center', va='bottom', fontsize=8, fontweight='bold', 
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='lightgreen', alpha=0.8))
+            else:
+                plt.text(0.5, 0.5, 'Big Mac verisi yüklenemedi', ha='center', va='center', 
+                        transform=plt.gca().transAxes, fontsize=12)
+                plt.title('Big Mac Verisi - Hata', fontsize=14)
+        if args.save:
+            if args.save_name:
+                filename = args.save_name
+            else:
+                filename = f"REDK_BigMac_{start_date.replace('-', '_')}_{end_date.replace('-', '_')}.png"
+            
+            plt.tight_layout()
+            plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
+            print(f"Grafik kaydedildi: {filename}")
+                
+        else:
+            plt.tight_layout()
+            #plt.show()
 
     # Grafik kaydetme
-    if args.save:
-        # Basit çarpım grafiği kaydet
-        filename = f"REDK_Basit_Carpim_{start_date.replace('-', '_')}_{end_date.replace('-', '_')}.png"
-        try:
-            plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
-            if args.verbose:
-                print(f"Grafik kaydedildi: {filename}")
-        except Exception as e:
-            print(f"Grafik kaydedilirken hata oluştu: {e}")
+    if args.same_scale:
         
         # Kümülatif çarpım grafiği oluştur ve kaydet
         plt.figure(figsize=(16, 8))
@@ -331,15 +356,20 @@ if __name__ == "__main__":
         plt.tight_layout()
         
         # Kümülatif çarpım grafiğini kaydet
-        kumulatif_filename = f"REDK_Kumulatif_Carpim_{start_date.replace('-', '_')}_{end_date.replace('-', '_')}.png"
-        try:
-            plt.savefig(kumulatif_filename, dpi=300, bbox_inches='tight', facecolor='white')
+        if args.save:
+            if args.save_name:
+                filename = args.save_name
+            else:
+                filename = f"REDK_Kumulatif_Carpim_{start_date.replace('-', '_')}_{end_date.replace('-', '_')}.png"
+            plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
             if args.verbose:
-                print(f"Kümülatif çarpım grafiği kaydedildi: {kumulatif_filename}")
-        except Exception as e:
-            print(f"Grafik kaydedilirken hata oluştu: {e}")
+                print(f"Grafik kaydedildi: {filename}")
+        else:
+            plt.show()
 
-    plt.show()
+
+        
+
     if args.verbose:
         # Özet istatistikler
         print("\n" + "="*50)
