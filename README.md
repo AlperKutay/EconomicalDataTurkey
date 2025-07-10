@@ -2,24 +2,24 @@
 
 Bu proje, Türkiye'nin ekonomik göstergelerini analiz etmek için bir dizi Python aracı içerir. TÜFE (Tüketici Fiyat Endeksi), USD/TRY döviz kuru, ENAG (Enflasyon Araştırma Grubu) verileri ve REDK (Reel Efektif Döviz Kuru) gibi çeşitli ekonomik göstergeleri analiz etmek ve görselleştirmek için kullanılabilir.
 
-![Örnek Çıktı](Figure_1.png)
+![Örnek Çıktı](graphs/Figure_1.png)
 
 ## Oluşturulan Grafik Dosyaları
 
 Scriptler çalıştırıldığında aşağıdaki PNG dosyaları oluşturulur:
 
 ### 1. REDK Üç Panel Analizi
-![REDK Basit Çarpım](REDK_Basit_Carpim_01_01_2005_01_06_2025.png)
+![REDK Basit Çarpım](graphs/REDK_BigMac_01_01_2005_01_06_2025.png)
 
 **Dosya**: `REDK_Basit_Carpim_[başlangıç]_[bitiş].png`
 
 Bu grafik üç alt panel içerir:
 - **Üst Panel**: Orijinal TP.RK.T1.Y (REDK) değerleri
 - **Orta Panel**: (ENAG + TÜFE)/2 yeniden oranlanmış değerler
-- **Alt Panel**: Türkiye Big Mac dolar fiyatları (6 aylık veri aylık hale genişletilmiş)
+- **Alt Panel**: Big Mac dolar fiyatları karşılaştırması (Türkiye vs Global Ortalama)
 
 ### 2. REDK Kümülatif Karşılaştırma
-![REDK Kümülatif Çarpım](REDK_Kumulatif_Carpim_01_01_2005_01_06_2025.png)
+![REDK Kümülatif Çarpım](graphs/REDK_Kumulatif_Carpim_01_01_2005_01_06_2025.png)
 
 **Dosya**: `REDK_Kumulatif_Carpim_[başlangıç]_[bitiş].png`
 
@@ -28,19 +28,24 @@ Bu grafik iki çizgiyi karşılaştırır:
 - **Mavi Çizgi**: Orijinal REDK değerleri (kesikli çizgi, şeffaf)
 
 ### 3. Big Mac Standalone Analizi
-![Big Mac Dolar Fiyatları](Big_Mac_Dolar_Fiyatlari_01_01_2020_01_06_2025.png)
+![Big Mac Dolar Fiyatları](graphs/Big_Mac_Dolar_Fiyatlari_01_01_2020_01_06_2025.png)
 
-**Dosya**: `Big_Mac_Dolar_Fiyatlari_[başlangıç]_[bitiş].png`
+**Dosya Çeşitleri**:
+- `Big_Mac_Dolar_Fiyatlari_[başlangıç]_[bitiş].png` - Ham fiyatlar
+- `Big_Mac_Dolar_Fiyatlari_adjusted_[başlangıç]_[bitiş].png` - GDP-adjusted Türkiye fiyatları
+- `Big_Mac_Dolar_Fiyatlari_global_adjusted_[başlangıç]_[bitiş].png` - GDP-adjusted global ortalama
+- `Big_Mac_Dolar_Fiyatlari_adjusted_global_adjusted_[başlangıç]_[bitiş].png` - Her ikisi de GDP-adjusted
 
 Bu grafik şunları gösterir:
-- Türkiye Big Mac dolar fiyatlarının zaman serisi analizi
-- 6 aylık orijinal veri aylık hale genişletilmiş
-- İstatistik kutusu (min, max, ortalama fiyatlar)
-- Son fiyat vurgulanmış
-- Detaylı fiyat etiketleri
+- **Türkiye Big Mac Fiyatları**: Ham veya GDP-adjusted dolar fiyatları
+- **Global Ortalama (Opsiyonel)**: Ham veya GDP-adjusted global ortalama fiyatları
+- **Karşılaştırmalı Analiz**: Türkiye'nin global ortalamaya göre konumu
+- **İstatistik Kutusu**: Hem Türkiye hem global için min, max, ortalama fiyatlar
+- **Son Değer Vurguları**: Her iki veri seti için son fiyatlar özel olarak işaretlenmiş
+- **Legend**: Hangi fiyat tipinin kullanıldığını gösteren açık etiketleme
 
 ### 4. Ev Fiyat Endeksi TL vs USD Karşılaştırma
-![Ev Fiyat TL USD Karşılaştırma](EvFiyat_TL_USD_Karsilastirma_01_01_2010_07_07_2025.png)
+![Ev Fiyat TL USD Karşılaştırma](graphs/EvFiyat_TL_USD_Karsilastirma_01_01_2010_07_07_2025.png)
 
 **Dosya**: `EvFiyat_TL_USD_Karsilastirma_[başlangıç]_[bitiş].png`
 
@@ -53,7 +58,7 @@ Bu grafik üç alt panel içerir:
 - 6 aylık X-ekseni formatı
 
 ### 5. Ev Fiyat Endeksi USD Analizi
-![Ev Fiyat USD Endeksi](EvFiyat_USD_Endeksi_01_01_2010_07_07_2025.png)
+![Ev Fiyat USD Endeksi](graphs/EvFiyat_USD_Endeksi_01_01_2010_07_07_2025.png)
 
 **Dosya**: `EvFiyat_USD_Endeksi_[başlangıç]_[bitiş].png`
 
@@ -120,7 +125,7 @@ python redk.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--verbose] [--
 - `--tufe_only`: Sadece TÜFE verilerini kullanır
 
 #### Görselleştirme Parametreleri:
-- `--add_big_mac`: Big Mac Endeksi grafiğini üçüncü panel olarak ekler
+- `--add_big_mac`: **YENİ**: Big Mac Endeksi grafiğini üçüncü panel olarak ekler (Türkiye vs Global Ortalama karşılaştırması)
 - `--same_scale`: Kümülatif karşılaştırma modu (REDK vs hesaplanan değerler)
 
 #### Parametre Kısıtlamaları:
@@ -138,7 +143,11 @@ python redk.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--verbose] [--
 Üç alt grafik içeren görselleştirme:
 - **REDK Analizi**: Orijinal TP.RK.T1.Y verileri
 - **Hesaplanan Analizi**: Seçilen parametreye göre ENAG/TÜFE analizi
-- **Big Mac Analizi**: Türkiye Big Mac dolar fiyatları
+- **Big Mac Karşılaştırması**: Türkiye vs Global Ortalama Big Mac dolar fiyatları
+  - Kırmızı çizgi: Türkiye Big Mac fiyatları
+  - Yeşil çizgi: Global ortalama Big Mac fiyatları
+  - Son değerler her ikisi için de vurgulanmış
+  - Kapsamlı istatistiksel karşılaştırma
 
 **3. Kümülatif Karşılaştırma Modu (`--same_scale`)**:
 İki çizgili karşılaştırma grafiği:
@@ -157,7 +166,7 @@ python redk.py [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--verbose] [--
 # Temel ENAG-TÜFE analizi
 python redk.py --average_enag_tufe
 
-# Big Mac ile birlikte kapsamlı analiz
+# Big Mac ile birlikte kapsamlı analiz (Türkiye vs Global)
 python redk.py --average_enag_tufe --add_big_mac --save
 
 # Sadece ENAG verisi ile analiz
@@ -172,26 +181,93 @@ python redk.py --start_date 01-01-2020 --end_date 01-01-2025 --save_name "redk_2
 
 ### big_mac_analysis.py
 
-Türkiye Big Mac Endeksi dolar fiyatlarını analiz eder ve görselleştirir. 6 aylık veriyi aylık hale getirerek daha ayrıntılı analiz sağlar.
+Türkiye Big Mac Endeksi dolar fiyatlarını analiz eder ve görselleştirir. 6 aylık veriyi aylık hale getirerek daha ayrıntılı analiz sağlar. **YENİ**: Global ortalama karşılaştırması ve GDP-adjusted fiyat analizi desteği.
 
 ```bash
-python big_mac_analysis.py [--file FILENAME] [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--save] [--no-values] [--analysis-only] [--no-expand]
+python big_mac_analysis.py [--file FILENAME] [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--save] [--no-values] [--analysis-only] [--no-expand] [--add-global-average] [--adjusted-turkey] [--add-adjusted-global]
 ```
 
-Parametreler:
-- `--file`: CSV dosya adı (varsayılan: big-mac-full-index.csv)
-- `--start_date`: Başlangıç tarihi (DD-MM-YYYY formatında)
-- `--end_date`: Bitiş tarihi (DD-MM-YYYY formatında)
+#### Temel Parametreler:
+- `--file`, `-f`: CSV dosya adı (varsayılan: big-mac-data/output-data/big-mac-tr-index.csv)
+- `--start_date`, `-s`: Başlangıç tarihi (DD-MM-YYYY formatında)
+- `--end_date`, `-e`: Bitiş tarihi (DD-MM-YYYY formatında)
 - `--save`: Grafiği PNG dosyası olarak kaydeder
 - `--no-values`: Grafik üzerinde değerleri göstermez
 - `--analysis-only`: Sadece analiz yapar, grafik çizmez
 - `--no-expand`: 6 aylık veriyi aylık hale getirmez
 
-**Özellikler**:
+#### **YENİ** Global ve Adjusted Fiyat Parametreleri:
+- `--add-global-average`: **YENİ**: Grafik üzerine global ortalama fiyatları ekler
+- `--adjusted-turkey`: **YENİ**: Türkiye için GDP-adjusted fiyatları kullanır (adj_price kolonu)
+- `--add-adjusted-global`: **YENİ**: Grafik üzerine global GDP-adjusted ortalama fiyatları ekler
+
+#### Fiyat Türleri:
+- **Ham Fiyatlar (dollar_price)**: Yerel Big Mac fiyatlarının direkt USD çevirimi
+- **GDP-Adjusted Fiyatlar (adj_price)**: Satın alma gücü paritesine göre ayarlanmış fiyatlar
+
+#### Kombinasyon Seçenekleri:
+
+**1. Sadece Türkiye (varsayılan)**:
+```bash
+python big_mac_analysis.py  # Ham Türkiye fiyatları
+python big_mac_analysis.py --adjusted-turkey  # GDP-adjusted Türkiye fiyatları
+```
+
+**2. Türkiye + Global Ham Karşılaştırma**:
+```bash
+python big_mac_analysis.py --add-global-average  # Ham vs Ham
+python big_mac_analysis.py --adjusted-turkey --add-global-average  # GDP-adjusted vs Ham
+```
+
+**3. Türkiye + Global GDP-Adjusted Karşılaştırma**:
+```bash
+python big_mac_analysis.py --add-adjusted-global  # Ham vs GDP-adjusted Global
+python big_mac_analysis.py --adjusted-turkey --add-adjusted-global  # GDP-adjusted vs GDP-adjusted (en adil karşılaştırma)
+```
+
+#### Görsel Özellikler:
+- **Türkiye Verileri**: Kırmızı çizgi, daire işaretçiler
+- **Global Veriler**: Yeşil çizgi, kare işaretçiler
+- **Dinamik Etiketleme**: Hangi fiyat tipinin kullanıldığını gösteren açık etiketler
+- **Çift İstatistik Kutusu**: Hem Türkiye hem global için ayrı istatistikler
+- **Son Değer Vurguları**: Her iki veri seti için renk kodlu son fiyat vurguları
+
+#### Dosya Adlandırma:
+- `Big_Mac_Dolar_Fiyatlari_YYYYMMDD.png` - Ham Türkiye
+- `Big_Mac_Dolar_Fiyatlari_adjusted_YYYYMMDD.png` - GDP-adjusted Türkiye
+- `Big_Mac_Dolar_Fiyatlari_global_adjusted_YYYYMMDD.png` - Ham Türkiye + GDP-adjusted Global
+- `Big_Mac_Dolar_Fiyatlari_adjusted_global_adjusted_YYYYMMDD.png` - GDP-adjusted Türkiye + GDP-adjusted Global
+
+#### **Özellikler**:
 - 6 aylık Big Mac verilerini aylık hale genişletir (her veriyi bir sonraki veri noktasına kadar tekrarlar)
 - Tarih aralığı filtreleme
 - Detaylı fiyat analizi ve yıllık değişim hesaplaması
 - Dinamik grafik etiketleme (veri yoğunluğuna göre)
+- **YENİ**: Global ortalama hesaplama ve karşılaştırma
+- **YENİ**: GDP-adjusted fiyat analizi (satın alma gücü paritesi)
+- **YENİ**: Türkiye vs Global karşılaştırmalı istatistikler
+
+#### Örnek Kullanımlar:
+
+```bash
+# Temel Türkiye Big Mac analizi
+python big_mac_analysis.py --save
+
+# Türkiye vs Global ham fiyat karşılaştırması
+python big_mac_analysis.py --add-global-average --save
+
+# GDP-adjusted Türkiye fiyatları
+python big_mac_analysis.py --adjusted-turkey --save
+
+# En adil karşılaştırma: GDP-adjusted vs GDP-adjusted
+python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --save
+
+# Özel tarih aralığı ile karşılaştırma
+python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --start_date 01-01-2020 --end_date 01-01-2024 --save
+
+# Sadece analiz (grafik yok)
+python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --analysis-only
+```
 
 ### tcmb_fiyat_usd_analysis.py
 
@@ -263,13 +339,41 @@ python redk.py --save
 
 Bu komut, REDK verisini çeker ve 09-2020'den itibaren ENAG-TÜFE/2 değerleri ile kümülatif çarpımını hesaplar. Sonuçları grafikle gösterir ve kaydeder.
 
+### **YENİ**: REDK + Big Mac Küresel Karşılaştırma
+
+```bash
+python redk.py --add_big_mac --save
+```
+
+Bu komut, REDK analizi ile birlikte Türkiye ve Global Big Mac fiyatlarının karşılaştırmasını da gösterir.
+
 ### Big Mac Analizi
 
+#### Temel Big Mac Analizi
 ```bash
 python big_mac_analysis.py --save
 ```
 
-Bu komut, Big Mac Endeksi verilerini analiz eder, Türkiye'nin Big Mac dolar fiyatlarının zaman serisi grafiğini çizer ve detaylı istatistiksel analiz yapar.
+#### **YENİ**: Big Mac Global Karşılaştırma
+```bash
+# Ham fiyat karşılaştırması
+python big_mac_analysis.py --add-global-average --save
+
+# GDP-adjusted karşılaştırma (en adil)
+python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --save
+```
+
+#### **YENİ**: Detaylı Big Mac Analizleri
+```bash
+# Sadece GDP-adjusted Türkiye analizi
+python big_mac_analysis.py --adjusted-turkey --save
+
+# Ham Türkiye vs GDP-adjusted Global
+python big_mac_analysis.py --add-adjusted-global --save
+
+# Özel tarih aralığı ile kapsamlı analiz
+python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --start_date 01-01-2020 --end_date 01-01-2024 --save --verbose
+```
 
 ### Ev Fiyat Endeksi USD Bazlı Analizi
 
@@ -291,6 +395,22 @@ python tcmb_fiyat_usd_analysis.py --start_date 01-01-2015 --end_date 01-01-2025 
 
 Bu komut, 2015-2025 dönemini analiz eder ve kapsamlı üç panel karşılaştırma yapar.
 
+## **YENİ ÖZELLIKLER v2.0**
+
+### Big Mac Global Karşılaştırma Sistemi
+- **Ham vs Ham**: Direkt fiyat karşılaştırması
+- **GDP-Adjusted vs GDP-Adjusted**: Satın alma gücü bazlı adil karşılaştırma
+- **Hibrit Kombinasyonlar**: Ham Türkiye vs GDP-adjusted Global veya tersi
+- **Otomatik Global Ortalama Hesaplama**: 40+ ülkenin Big Mac fiyatlarından otomatik ortalama
+
+### Enhanced REDK Analysis
+- **Big Mac Entegrasyonu**: REDK analizi ile Big Mac küresel karşılaştırması tek grafikte
+- **Türkiye vs Global Positioning**: Türkiye'nin küresel Big Mac pazarındaki konumu
+
+### Gelişmiş Dosya Yönetimi
+- **Akıllı Dosya Adlandırma**: Kullanılan parametrelere göre otomatik dosya adlandırma
+- **Versiyonlu Çıktılar**: Ham, adjusted, global varyantları için farklı dosya isimleri
+
 ## Veri Kaynakları
 
 - TÜFE ve REDK verileri: TCMB EVDS API'si
@@ -300,6 +420,8 @@ Bu komut, 2015-2025 dönemini analiz eder ve kapsamlı üç panel karşılaştı
   - Resmi Big Mac Index veri seti ve metodolojisi
   - MIT lisansı altında açık kaynak
   - Aylık güncellemeler ve tam tarihsel veri
+  - **YENİ**: 40+ ülke verisi ile global ortalama hesaplama
+  - **YENİ**: GDP-adjusted fiyat verisi (satın alma gücü paritesi)
 
 ## Dosya Yapısı
 
@@ -310,15 +432,22 @@ EconomicalDataTurkey/
 ├── tufe_filter.py          # TÜFE veri filtreleme yardımcıları
 ├── redk.py                 # Reel Efektif Döviz Kuru analizi
 ├── enag_subs_tufe_2.py     # ENAG-TÜFE/2 analizi
-├── big_mac_analysis.py     # Big Mac Endeksi analizi
+├── big_mac_analysis.py     # Big Mac Endeksi analizi (YENİ: Global karşılaştırma)
 ├── tcmb_fiyat_usd_analysis.py # Ev fiyat endeksi USD bazlı analiz
-├── big-mac-full-index.csv  # Big Mac Endeksi verileri (sadece Türkiye)
+├── big-mac-data/           # Big Mac veri klasörü
+│   └── output-data/
+│       ├── big-mac-tr-index.csv      # Türkiye Big Mac verileri
+│       └── big-mac-full-index.csv    # YENİ: Global Big Mac verileri
+├── graphs/                 # Otomatik oluşturulan grafik klasörü
+│   ├── REDK_Basit_Carpim_[tarih].png
+│   ├── REDK_Kumulatif_Carpim_[tarih].png
+│   ├── Big_Mac_Dolar_Fiyatlari_[tarih].png
+│   ├── Big_Mac_Dolar_Fiyatlari_adjusted_[tarih].png     # YENİ
+│   ├── Big_Mac_Dolar_Fiyatlari_global_adjusted_[tarih].png  # YENİ
+│   ├── Big_Mac_Dolar_Fiyatlari_adjusted_global_adjusted_[tarih].png  # YENİ
+│   ├── EvFiyat_TL_USD_Karsilastirma_[tarih].png
+│   └── EvFiyat_USD_Endeksi_[tarih].png
 ├── Figure_1.png            # Örnek çıktı görseli
-├── REDK_Basit_Carpim_[tarih].png      # REDK üç panel analizi
-├── REDK_Kumulatif_Carpim_[tarih].png  # REDK kümülatif karşılaştırma
-├── Big_Mac_Dolar_Fiyatlari_[tarih].png # Big Mac standalone analizi
-├── EvFiyat_TL_USD_Karsilastirma_[tarih].png # Ev fiyat TL vs USD karşılaştırma
-├── EvFiyat_USD_Endeksi_[tarih].png        # Ev fiyat USD endeksi analizi
 └── README.md               # Bu dosya
 ```
 

@@ -44,7 +44,7 @@ def expand_big_mac_data_to_monthly(df):
     
     return expanded_df
 
-def read_big_mac_data(filename='big-mac-full-index.csv', start_date=None, end_date=None, expand_monthly=True):
+def read_big_mac_data(filename='big-mac-data/output-data/big-mac-tr-index.csv', start_date=None, end_date=None, expand_monthly=True, use_adjusted=False):
     """
     Big Mac CSV dosyasını okur ve işler.
     
@@ -53,6 +53,7 @@ def read_big_mac_data(filename='big-mac-full-index.csv', start_date=None, end_da
         start_date: Başlangıç tarihi (DD-MM-YYYY formatında)
         end_date: Bitiş tarihi (DD-MM-YYYY formatında)
         expand_monthly: 6 aylık veriyi aylık hale getir
+        use_adjusted: GDP-adjusted fiyat kullan (adj_price kolonu)
         
     Returns:
         df: İşlenmiş pandas DataFrame
@@ -68,9 +69,18 @@ def read_big_mac_data(filename='big-mac-full-index.csv', start_date=None, end_da
         df = df.sort_values('date')
         
         # Numerik kolonları float'a çevir
-        numeric_columns = ['local_price', 'dollar_ex', 'dollar_price']
+        price_column = 'adj_price' if use_adjusted else 'dollar_price'
+        numeric_columns = ['local_price', 'dollar_ex', 'dollar_price', 'adj_price']
         for col in numeric_columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # Fiyat kolonunu belirle ve dollar_price olarak kopyala (geriye uyumluluk için)
+        if use_adjusted and 'adj_price' in df.columns:
+            df['dollar_price'] = df['adj_price'].copy()
+            print(f"GDP-adjusted fiyatlar kullanılıyor (adj_price kolonu)")
+        else:
+            print(f"Ham fiyatlar kullanılıyor (dollar_price kolonu)")
         
         # Tarih filtreleme
         if start_date:
@@ -95,7 +105,8 @@ def read_big_mac_data(filename='big-mac-full-index.csv', start_date=None, end_da
         
         if len(df) > 0:
             print(f"Tarih aralığı: {df['date'].min()} - {df['date'].max()}")
-            print(f"Dolar fiyat aralığı: ${df['dollar_price'].min():.2f} - ${df['dollar_price'].max():.2f}")
+            price_type = "GDP-adjusted" if use_adjusted else "Ham"
+            print(f"{price_type} dolar fiyat aralığı: ${df['dollar_price'].min():.2f} - ${df['dollar_price'].max():.2f}")
         else:
             print("Uyarı: Filtreleme sonrası veri kalmadı!")
         
@@ -105,7 +116,79 @@ def read_big_mac_data(filename='big-mac-full-index.csv', start_date=None, end_da
         print(f"Veri okuma hatası: {e}")
         return None
 
-def plot_big_mac_prices(df, save=False, show_values=True, start_date=None, end_date=None):
+def read_global_big_mac_data(filename='big-mac-data/output-data/big-mac-full-index.csv', start_date=None, end_date=None, expand_monthly=True, use_adjusted=False):
+    """
+    Global Big Mac CSV dosyasını okur ve global ortalama hesaplar.
+    
+    Args:
+        filename: CSV dosya adı
+        start_date: Başlangıç tarihi (DD-MM-YYYY formatında)
+        end_date: Bitiş tarihi (DD-MM-YYYY formatında)
+        expand_monthly: 6 aylık veriyi aylık hale getir
+        use_adjusted: GDP-adjusted fiyat kullan (adj_price kolonu)
+        
+    Returns:
+        df: Global ortalama Big Mac verilerini içeren DataFrame
+    """
+    try:
+        df = pd.read_csv(filename)
+        print(f"Global veri başarıyla okundu: {len(df)} satır")
+        
+        # Tarih sütununu datetime formatına çevir
+        df['date'] = pd.to_datetime(df['date'])
+        
+        # Numerik kolonları float'a çevir
+        price_column = 'adj_price' if use_adjusted else 'dollar_price'
+        df[price_column] = pd.to_numeric(df[price_column], errors='coerce')
+        
+        # Her tarih için global ortalama hesapla
+        global_avg = df.groupby('date')[price_column].mean().reset_index()
+        global_avg['iso_a3'] = 'GLOBAL'
+        global_avg['name'] = 'Global Average'
+        global_avg['local_price'] = global_avg[price_column]  # Global için local_price = price
+        global_avg['dollar_ex'] = 1.0  # Global için döviz kuru 1
+        global_avg['dollar_price'] = global_avg[price_column]  # Geriye uyumluluk için
+        
+        price_type = "GDP-adjusted" if use_adjusted else "Ham"
+        print(f"Global {price_type} ortalama veri: {len(global_avg)} satır")
+        
+        # Tarihe göre sırala
+        global_avg = global_avg.sort_values('date')
+        
+        # Tarih filtreleme
+        if start_date:
+            try:
+                start_dt = datetime.strptime(start_date, '%d-%m-%Y')
+                global_avg = global_avg[global_avg['date'] >= start_dt]
+                print(f"Başlangıç tarihinden sonra: {len(global_avg)} satır")
+            except ValueError:
+                print(f"Geçersiz başlangıç tarihi formatı: {start_date}")
+        
+        if end_date:
+            try:
+                end_dt = datetime.strptime(end_date, '%d-%m-%Y')
+                global_avg = global_avg[global_avg['date'] <= end_dt]
+                print(f"Bitiş tarihinden önce: {len(global_avg)} satır")
+            except ValueError:
+                print(f"Geçersiz bitiş tarihi formatı: {end_date}")
+        
+        # Aylık genişletme
+        if expand_monthly and len(global_avg) > 0:
+            global_avg = expand_big_mac_data_to_monthly(global_avg)
+        
+        if len(global_avg) > 0:
+            print(f"Global tarih aralığı: {global_avg['date'].min()} - {global_avg['date'].max()}")
+            print(f"Global {price_type} dolar fiyat aralığı: ${global_avg['dollar_price'].min():.2f} - ${global_avg['dollar_price'].max():.2f}")
+        else:
+            print("Uyarı: Global veri filtreleme sonrası veri kalmadı!")
+        
+        return global_avg
+        
+    except Exception as e:
+        print(f"Global veri okuma hatası: {e}")
+        return None
+
+def plot_big_mac_prices(df, save=False, show_values=True, start_date=None, end_date=None, global_df=None, use_adjusted=False, global_adjusted=False):
     """
     Big Mac dolar fiyatlarının grafiğini çizer.
     
@@ -115,20 +198,46 @@ def plot_big_mac_prices(df, save=False, show_values=True, start_date=None, end_d
         show_values: Grafik üzerinde değerleri göster
         start_date: Başlangıç tarihi (dosya adı için)
         end_date: Bitiş tarihi (dosya adı için)
+        global_df: Global ortalama verilerini içeren DataFrame (opsiyonel)
+        use_adjusted: GDP-adjusted fiyat kullanılıyor mu (Türkiye için)
+        global_adjusted: Global için GDP-adjusted fiyat kullanılıyor mu
     """
     plt.figure(figsize=(16, 10))
     
-    # Ana grafik
+    # Fiyat tipini belirle
+    price_type = "GDP-Adjusted" if use_adjusted else "Ham"
+    turkey_label = f'Türkiye ({price_type})'
+    
+    # Ana grafik (Türkiye)
     plt.plot(df['date'], df['dollar_price'], 
              marker='o', linewidth=2, markersize=6, 
              color='#e74c3c', markerfacecolor='white', 
-             markeredgecolor='#e74c3c', markeredgewidth=2)
+             markeredgecolor='#e74c3c', markeredgewidth=2,
+             label=turkey_label, zorder=3)
+    
+    # Global ortalama çizgisi (eğer verilmişse)
+    if global_df is not None and len(global_df) > 0:
+        global_price_type = "GDP-Adjusted" if global_adjusted else "Ham"
+        global_label = f'Global Ortalama ({global_price_type})'
+        plt.plot(global_df['date'], global_df['dollar_price'], 
+                 marker='s', linewidth=2, markersize=4, 
+                 color='#2ecc71', markerfacecolor='white', 
+                 markeredgecolor='#2ecc71', markeredgewidth=1,
+                 label=global_label, alpha=0.8, zorder=2)
     
     # Grafik düzenlemeleri
     date_range = f"({df['date'].min().strftime('%m-%Y')} - {df['date'].max().strftime('%m-%Y')})"
-    plt.title(f'Türkiye Big Mac Dolar Fiyatları {date_range}', fontsize=16, fontweight='bold', pad=20)
+    title = f'Türkiye Big Mac {price_type} Dolar Fiyatları {date_range}'
+    if global_df is not None:
+        global_price_type = "GDP-Adjusted" if global_adjusted else "Ham"
+        title += f' (Global {global_price_type} Ortalama ile Karşılaştırma)'
+    plt.title(title, fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Tarih', fontsize=12)
     plt.ylabel('Dolar Fiyatı ($)', fontsize=12)
+    
+    # Legend ekle (eğer global veri varsa veya adjusted kullanılıyorsa)
+    if global_df is not None or use_adjusted:
+        plt.legend(loc='upper left', fontsize=10)
     
     # Grid
     plt.grid(True, alpha=0.3, linestyle='--')
@@ -161,24 +270,53 @@ def plot_big_mac_prices(df, save=False, show_values=True, start_date=None, end_d
     # Son değeri özel olarak vurgula
     last_date = df['date'].iloc[-1]
     last_price = df['dollar_price'].iloc[-1]
-    plt.annotate(f'Son: ${last_price:.2f}', 
+    tr_label = f'TR Son ({price_type}): ${last_price:.2f}'
+    plt.annotate(tr_label, 
                 (last_date, last_price), 
                 textcoords="offset points", 
                 xytext=(10,15), 
                 ha='left', fontsize=10, fontweight='bold',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.8),
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='lightcoral', alpha=0.8),
                 arrowprops=dict(arrowstyle='->', color='black', lw=1))
+    
+    # Global son değeri de vurgula (eğer varsa)
+    if global_df is not None and len(global_df) > 0:
+        global_last_date = global_df['date'].iloc[-1]
+        global_last_price = global_df['dollar_price'].iloc[-1]
+        global_price_type = "GDP-Adjusted" if global_adjusted else "Ham"
+        global_label = f'Global Son ({global_price_type}): ${global_last_price:.2f}'
+        plt.annotate(global_label, 
+                    (global_last_date, global_last_price), 
+                    textcoords="offset points", 
+                    xytext=(-10,15), 
+                    ha='right', fontsize=10, fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.8),
+                    arrowprops=dict(arrowstyle='->', color='black', lw=1))
     
     # İstatistikleri ekle
     min_price = df['dollar_price'].min()
     max_price = df['dollar_price'].max()
     avg_price = df['dollar_price'].mean()
     
-    stats_text = f"""İstatistikler:
+    stats_text = f"""Türkiye İstatistikleri ({price_type}):
 En düşük: ${min_price:.2f}
 En yüksek: ${max_price:.2f}
 Ortalama: ${avg_price:.2f}
 Veri sayısı: {len(df)}"""
+    
+    # Global istatistikleri de ekle (eğer varsa)
+    if global_df is not None and len(global_df) > 0:
+        global_min = global_df['dollar_price'].min()
+        global_max = global_df['dollar_price'].max()
+        global_avg = global_df['dollar_price'].mean()
+        global_price_type = "GDP-Adjusted" if global_adjusted else "Ham"
+        
+        stats_text += f"""
+
+Global İstatistikleri ({global_price_type}):
+En düşük: ${global_min:.2f}
+En yüksek: ${global_max:.2f}
+Ortalama: ${global_avg:.2f}"""
     
     plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
              verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8),
@@ -188,10 +326,12 @@ Veri sayısı: {len(df)}"""
     
     # Grafik kaydetme
     if save:
+        price_suffix = "_adjusted" if use_adjusted else ""
+        global_suffix = "_global_adjusted" if global_adjusted else ""
         if start_date and end_date:
-            filename = f"Big_Mac_Dolar_Fiyatlari_{start_date.replace('-', '_')}_{end_date.replace('-', '_')}.png"
+            filename = f"graphs/Big_Mac_Dolar_Fiyatlari{price_suffix}{global_suffix}_{start_date.replace('-', '_')}_{end_date.replace('-', '_')}.png"
         else:
-            filename = f"Big_Mac_Dolar_Fiyatlari_{datetime.now().strftime('%Y%m%d')}.png"
+            filename = f"graphs/Big_Mac_Dolar_Fiyatlari{price_suffix}{global_suffix}_{datetime.now().strftime('%Y%m%d')}.png"
         try:
             plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
             print(f"Grafik kaydedildi: {filename}")
@@ -200,7 +340,7 @@ Veri sayısı: {len(df)}"""
     
     plt.show()
 
-def analyze_price_trends(df, start_date=None, end_date=None):
+def analyze_price_trends(df, start_date=None, end_date=None, use_adjusted=False):
     """
     Fiyat trendlerini analiz eder.
     
@@ -208,9 +348,11 @@ def analyze_price_trends(df, start_date=None, end_date=None):
         df: Big Mac verilerini içeren DataFrame
         start_date: Başlangıç tarihi
         end_date: Bitiş tarihi
+        use_adjusted: GDP-adjusted fiyat kullanılıyor mu
     """
     print("\n" + "="*50)
-    print("BIG MAC FİYAT ANALİZİ")
+    price_type = "GDP-ADJUSTED" if use_adjusted else "HAM"
+    print(f"BIG MAC {price_type} FİYAT ANALİZİ")
     print("="*50)
     
     # Tarih aralığı bilgisi
@@ -220,6 +362,7 @@ def analyze_price_trends(df, start_date=None, end_date=None):
     
     # Temel istatistikler
     print(f"Analiz dönemi{date_info}")
+    print(f"Fiyat tipi: {price_type}")
     print(f"Toplam veri sayısı: {len(df)}")
     print(f"Tarih aralığı: {df['date'].min().strftime('%d-%m-%Y')} - {df['date'].max().strftime('%d-%m-%Y')}")
     print(f"En düşük fiyat: ${df['dollar_price'].min():.2f}")
@@ -269,8 +412,8 @@ if __name__ == "__main__":
     # Argparse setup
     parser = argparse.ArgumentParser(description='Big Mac dolar fiyatları analiz scripti')
     parser.add_argument('--file', '-f', 
-                        default='big-mac-full-index.csv', 
-                        help='CSV dosya adı (default: big-mac-full-index.csv)')
+                        default='big-mac-data/output-data/big-mac-tr-index.csv', 
+                        help='CSV dosya adı (default: big-mac-data/output-data/big-mac-tr-index.csv)')
     parser.add_argument('--start_date', '-s', 
                         default=None, 
                         help='Başlangıç tarihi (DD-MM-YYYY formatında)')
@@ -285,6 +428,12 @@ if __name__ == "__main__":
                         help='Sadece analiz yap, grafik çizme')
     parser.add_argument('--no-expand', action='store_true', 
                         help='6 aylık veriyi aylık hale getirme')
+    parser.add_argument('--add-global-average', action='store_true', 
+                        help='Grafik üzerine global ortalama fiyatları ekle')
+    parser.add_argument('--adjusted-turkey', action='store_true', 
+                        help='Türkiye için GDP-adjusted fiyatları kullan (adj_price kolonu)')
+    parser.add_argument('--add-adjusted-global', action='store_true', 
+                        help='Grafik üzerine global GDP-adjusted ortalama fiyatları ekle')
     
     args = parser.parse_args()
     
@@ -292,14 +441,31 @@ if __name__ == "__main__":
     df = read_big_mac_data(args.file, 
                            start_date=args.start_date, 
                            end_date=args.end_date,
-                           expand_monthly=not args.no_expand)
+                           expand_monthly=not args.no_expand,
+                           use_adjusted=args.adjusted_turkey)
     
     if df is None or len(df) == 0:
         print("Hata: Veri okunamadı veya filtreleme sonrası veri kalmadı!")
         exit(1)
     
+    # Global ortalama verilerini oku (eğer isteniyorsa)
+    global_df = None
+    global_adjusted = False
+    
+    if args.add_global_average or args.add_adjusted_global:
+        global_adjusted = args.add_adjusted_global
+        global_type = "GDP-adjusted" if global_adjusted else "ham"
+        print(f"\nGlobal {global_type} ortalama verileri okunuyor...")
+        global_df = read_global_big_mac_data(start_date=args.start_date, 
+                                           end_date=args.end_date,
+                                           expand_monthly=not args.no_expand,
+                                           use_adjusted=global_adjusted)
+        if global_df is None or len(global_df) == 0:
+            print("Uyarı: Global ortalama verisi okunamadı, sadece Türkiye verisi gösterilecek!")
+            global_df = None
+    
     # Analiz yap
-    analyze_price_trends(df, start_date=args.start_date, end_date=args.end_date)
+    analyze_price_trends(df, start_date=args.start_date, end_date=args.end_date, use_adjusted=args.adjusted_turkey)
     
     # Grafik çiz (eğer sadece analiz istenmemişse)
     if not args.analysis_only:
@@ -307,4 +473,7 @@ if __name__ == "__main__":
                            save=args.save, 
                            show_values=not args.no_values,
                            start_date=args.start_date,
-                           end_date=args.end_date) 
+                           end_date=args.end_date,
+                           global_df=global_df,
+                           use_adjusted=args.adjusted_turkey,
+                           global_adjusted=global_adjusted) 

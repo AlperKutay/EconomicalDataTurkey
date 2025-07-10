@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 from enag_subs_tufe_2 import calculate_enag_subtract_tufe
 from enf import analyze_economic_data
-from big_mac_analysis import read_big_mac_data
+from big_mac_analysis import read_big_mac_data, read_global_big_mac_data
 
 def fetch_and_process_redk_data(start_date, end_date, api_key='kk11ju7Bis', verbose=False):
     """
@@ -206,10 +206,15 @@ if __name__ == "__main__":
     # Big Mac verisini oku
     if args.add_big_mac:
         print("\nBig Mac verisi okunuyor...")
-        df_bigmac = read_big_mac_data('big-mac-full-index.csv', 
+        df_bigmac = read_big_mac_data('big-mac-data/output-data/big-mac-tr-index.csv', 
                                     start_date=start_date, 
                                     end_date=end_date, 
                                     expand_monthly=True)
+        
+        print("Global Big Mac ortalama verisi okunuyor...")
+        df_bigmac_global = read_global_big_mac_data(start_date=start_date, 
+                                                   end_date=end_date, 
+                                                   expand_monthly=True)
     
     if not args.same_scale:
             # Grafik oluştur - 3 alt grafik
@@ -267,18 +272,30 @@ if __name__ == "__main__":
                 plt.text(date, value, f'{value:.1f}', 
                         ha='center', va='bottom', fontsize=8, color='green')
 
-        # Üçüncü grafik: Big Mac Dolar Fiyatları
+        # Üçüncü grafik: Big Mac Dolar Fiyatları (Türkiye + Global)
         if args.add_big_mac:
             if df_bigmac is not None:
                 plt.subplot(num_plots, 1, 3)
+                
+                # Türkiye Big Mac verileri
                 plt.plot(df_bigmac['date'], df_bigmac['dollar_price'], 
                         marker='o', linewidth=2, markersize=4, 
                         color='#e74c3c', markerfacecolor='white', 
-                        markeredgecolor='#e74c3c', markeredgewidth=1)
+                        markeredgecolor='#e74c3c', markeredgewidth=1,
+                        label='Türkiye')
                 
-                plt.title('Türkiye Big Mac Dolar Fiyatları', fontsize=14)
+                # Global Big Mac ortalama verileri
+                if df_bigmac_global is not None and len(df_bigmac_global) > 0:
+                    plt.plot(df_bigmac_global['date'], df_bigmac_global['dollar_price'], 
+                            marker='s', linewidth=2, markersize=3, 
+                            color='#2ecc71', markerfacecolor='white', 
+                            markeredgecolor='#2ecc71', markeredgewidth=1,
+                            label='Global Ortalama', alpha=0.8)
+                
+                plt.title('Big Mac Dolar Fiyatları (Türkiye vs Global)', fontsize=14)
                 plt.xlabel("Tarih")
                 plt.ylabel("Dolar Fiyatı ($)")
+                plt.legend()
                 plt.grid(True, alpha=0.3)
                 
                 # X ekseni formatını ayarla - 6 ayda bir (Big Mac için de)
@@ -290,7 +307,7 @@ if __name__ == "__main__":
                 # Y ekseni formatı
                 ax3.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:.2f}'))
                 
-                # Her 5 datada bir değer göster
+                # Türkiye değerlerini göster (her 5 datada bir)
                 for i in range(0, len(df_bigmac), 5):
                     date = df_bigmac['date'].iloc[i]
                     price = df_bigmac['dollar_price'].iloc[i]
@@ -298,12 +315,21 @@ if __name__ == "__main__":
                         plt.text(date, price, f'${price:.2f}', 
                                 ha='center', va='bottom', fontsize=7, color='red')
                 
-                # Son değeri vurgula
-                last_date = df_bigmac['date'].iloc[-1]
-                last_price = df_bigmac['dollar_price'].iloc[-1]
-                plt.text(last_date, last_price + 0.2, f'${last_price:.2f}', 
+                # Son değerleri vurgula
+                # Türkiye son değeri
+                last_date_tr = df_bigmac['date'].iloc[-1]
+                last_price_tr = df_bigmac['dollar_price'].iloc[-1]
+                plt.text(last_date_tr, last_price_tr + 0.2, f'TR: ${last_price_tr:.2f}', 
                         ha='center', va='bottom', fontsize=8, fontweight='bold', 
-                        bbox=dict(boxstyle='round,pad=0.2', facecolor='lightgreen', alpha=0.8))
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='lightcoral', alpha=0.8))
+                
+                # Global son değeri
+                if df_bigmac_global is not None and len(df_bigmac_global) > 0:
+                    last_date_global = df_bigmac_global['date'].iloc[-1]
+                    last_price_global = df_bigmac_global['dollar_price'].iloc[-1]
+                    plt.text(last_date_global, last_price_global + 0.2, f'Global: ${last_price_global:.2f}', 
+                            ha='center', va='bottom', fontsize=8, fontweight='bold', 
+                            bbox=dict(boxstyle='round,pad=0.2', facecolor='lightgreen', alpha=0.8))
             else:
                 plt.text(0.5, 0.5, 'Big Mac verisi yüklenemedi', ha='center', va='center', 
                         transform=plt.gca().transAxes, fontsize=12)
@@ -320,7 +346,7 @@ if __name__ == "__main__":
                 
         else:
             plt.tight_layout()
-            #plt.show()
+            plt.show()
 
     # Grafik kaydetme
     if args.same_scale:
@@ -409,9 +435,9 @@ if __name__ == "__main__":
                 print(f"Yüzde Değişim: {percent_change:.2f}%")
 
         # Big Mac istatistikleri
-        if df_bigmac is not None:
+        if args.add_big_mac and df_bigmac is not None:
             print("\n" + "="*50)
-            print("ÖZET İSTATİSTİKLER - BIG MAC DOLAR FİYATLARI")
+            print("ÖZET İSTATİSTİKLER - BIG MAC DOLAR FİYATLARI (TÜRKİYE)")
             print("="*50)
             print(f"Veri Sayısı: {len(df_bigmac)}")
             print(f"Ortalama: ${df_bigmac['dollar_price'].mean():.2f}")
@@ -421,3 +447,36 @@ if __name__ == "__main__":
             print(f"Maksimum: ${df_bigmac['dollar_price'].max():.2f}")
             print(f"İlk Değer: ${df_bigmac['dollar_price'].iloc[0]:.2f}")
             print(f"Son Değer: ${df_bigmac['dollar_price'].iloc[-1]:.2f}")
+            
+            # Global Big Mac istatistikleri
+            if df_bigmac_global is not None and len(df_bigmac_global) > 0:
+                print("\n" + "="*50)
+                print("ÖZET İSTATİSTİKLER - BIG MAC DOLAR FİYATLARI (GLOBAL ORTALAMA)")
+                print("="*50)
+                print(f"Veri Sayısı: {len(df_bigmac_global)}")
+                print(f"Ortalama: ${df_bigmac_global['dollar_price'].mean():.2f}")
+                print(f"Medyan: ${df_bigmac_global['dollar_price'].median():.2f}")
+                print(f"Standart Sapma: ${df_bigmac_global['dollar_price'].std():.2f}")
+                print(f"Minimum: ${df_bigmac_global['dollar_price'].min():.2f}")
+                print(f"Maksimum: ${df_bigmac_global['dollar_price'].max():.2f}")
+                print(f"İlk Değer: ${df_bigmac_global['dollar_price'].iloc[0]:.2f}")
+                print(f"Son Değer: ${df_bigmac_global['dollar_price'].iloc[-1]:.2f}")
+                
+                # Karşılaştırma analizi
+                print("\n" + "="*50)
+                print("KARŞILAŞTIRMA ANALİZİ - TÜRKİYE vs GLOBAL")
+                print("="*50)
+                tr_last = df_bigmac['dollar_price'].iloc[-1]
+                global_last = df_bigmac_global['dollar_price'].iloc[-1]
+                difference = tr_last - global_last
+                percent_diff = (difference / global_last) * 100
+                
+                print(f"Türkiye Son Fiyat: ${tr_last:.2f}")
+                print(f"Global Son Fiyat: ${global_last:.2f}")
+                print(f"Fark: ${difference:.2f}")
+                print(f"Yüzde Fark: {percent_diff:+.1f}%")
+                
+                if percent_diff > 0:
+                    print(f"Türkiye Big Mac fiyatları global ortalamanın {percent_diff:.1f}% üzerinde")
+                else:
+                    print(f"Türkiye Big Mac fiyatları global ortalamanın {abs(percent_diff):.1f}% altında")
