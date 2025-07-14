@@ -33,8 +33,11 @@ Bu grafik iki çizgiyi karşılaştırır:
 **Dosya Çeşitleri**:
 - `Big_Mac_Dolar_Fiyatlari_[başlangıç]_[bitiş].png` - Ham fiyatlar
 - `Big_Mac_Dolar_Fiyatlari_adjusted_[başlangıç]_[bitiş].png` - GDP-adjusted Türkiye fiyatları
+- `Big_Mac_Dolar_Fiyatlari_inflation_adjusted_[başlangıç]_[bitiş].png` - **YENİ**: US CPI enflasyon ayarlı fiyatlar
 - `Big_Mac_Dolar_Fiyatlari_global_adjusted_[başlangıç]_[bitiş].png` - GDP-adjusted global ortalama
 - `Big_Mac_Dolar_Fiyatlari_adjusted_global_adjusted_[başlangıç]_[bitiş].png` - Her ikisi de GDP-adjusted
+- `Big_Mac_Dolar_Fiyatlari_adjusted_inflation_adjusted_[başlangıç]_[bitiş].png` - **YENİ**: GDP + US CPI enflasyon ayarlı
+- `Big_Mac_Dolar_Fiyatlari_inflation_adjusted_global_adjusted_[başlangıç]_[bitiş].png` - **YENİ**: US CPI + Global GDP ayarlı
 
 Bu grafik şunları gösterir:
 - **Türkiye Big Mac Fiyatları**: Ham veya GDP-adjusted dolar fiyatları
@@ -76,10 +79,17 @@ Bu grafik şunları gösterir:
 - matplotlib
 - numpy
 - evds (TCMB EVDS API'si için)
+- requests (US FRED API'si için) **YENİ**
 
 ```bash
-pip install pandas matplotlib numpy evds
+pip install pandas matplotlib numpy evds requests
 ```
+
+### **YENİ**: FRED API Anahtarı
+US CPI enflasyon ayarlı analizler için **ücretsiz** FRED API anahtarına ihtiyaç vardır:
+1. [https://fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html) adresinden ücretsiz hesap oluşturun
+2. API anahtarınızı `us_enf.py` dosyasındaki `FRED_API_KEY` değişkenine ekleyin
+3. Enflasyon ayarlı analizler artık kullanıma hazır!
 
 ## Modüller
 
@@ -102,6 +112,37 @@ Parametreler:
 ### enag.py
 
 ENAG (Enflasyon Araştırma Grubu) verilerini işlemek için yardımcı modül.
+
+### us_enf.py **YENİ**
+
+US FRED API'sinden Amerikan CPI (Consumer Price Index) verilerini çeker ve enflasyon ayarlı fiyat hesaplamaları için kullanılır.
+
+```bash
+python us_enf.py [--series_id SERIES_ID] [--date YYYY-MM-DD]
+```
+
+Parametreler:
+- `--series_id`: FRED series ID (varsayılan: CPIAUCSL - Consumer Price Index for All Urban Consumers)
+- `--date`: Belirli bir tarih için CPI verisi (YYYY-MM-DD formatında). Belirtilmezse en son veri getirilir
+
+**Özellikler**:
+- **Akıllı Tarih Eşleştirme**: Tam tarih bulunamadığında en yakın tarihi bulur
+- **Otomatik Hata Yönetimi**: API hatalarını yakalar ve bilgilendirici mesajlar verir
+- **Programatik Kullanım**: Diğer modüller tarafından CPI verisi almak için kullanılabilir
+- **FRED API Entegrasyonu**: St. Louis Federal Reserve'den resmi CPI verileri
+
+#### Örnek Kullanımlar:
+
+```bash
+# En son CPI verisini al
+python us_enf.py
+
+# Belirli bir tarih için CPI verisi
+python us_enf.py --date 2023-01-01
+
+# Farklı bir CPI serisi kullan
+python us_enf.py --series_id CPILFESL --date 2023-01-01  # Core CPI (less food and energy)
+```
 
 ### redk.py
 
@@ -184,7 +225,7 @@ python redk.py --start_date 01-01-2020 --end_date 01-01-2025 --save_name "redk_2
 Türkiye Big Mac Endeksi dolar fiyatlarını analiz eder ve görselleştirir. 6 aylık veriyi aylık hale getirerek daha ayrıntılı analiz sağlar. **YENİ**: Global ortalama karşılaştırması ve GDP-adjusted fiyat analizi desteği.
 
 ```bash
-python big_mac_analysis.py [--file FILENAME] [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--save] [--no-values] [--analysis-only] [--no-expand] [--add-global-average] [--adjusted-turkey] [--add-adjusted-global]
+python big_mac_analysis.py [--file FILENAME] [--start_date DD-MM-YYYY] [--end_date DD-MM-YYYY] [--save] [--no-values] [--analysis-only] [--no-expand] [--add-global-average] [--adjusted-turkey] [--add-adjusted-global] [--enf-adjusted] [--base-date YYYY-MM-DD]
 ```
 
 #### Temel Parametreler:
@@ -200,10 +241,13 @@ python big_mac_analysis.py [--file FILENAME] [--start_date DD-MM-YYYY] [--end_da
 - `--add-global-average`: **YENİ**: Grafik üzerine global ortalama fiyatları ekler
 - `--adjusted-turkey`: **YENİ**: Türkiye için GDP-adjusted fiyatları kullanır (adj_price kolonu)
 - `--add-adjusted-global`: **YENİ**: Grafik üzerine global GDP-adjusted ortalama fiyatları ekler
+- `--enf-adjusted`: **YENİ**: US CPI verilerini kullanarak enflasyon ayarlı fiyatları hesapla
+- `--base-date`: **YENİ**: Enflasyon ayarlaması için baz tarih (YYYY-MM-DD formatında, varsayılan: ilk tarih)
 
 #### Fiyat Türleri:
 - **Ham Fiyatlar (dollar_price)**: Yerel Big Mac fiyatlarının direkt USD çevirimi
 - **GDP-Adjusted Fiyatlar (adj_price)**: Satın alma gücü paritesine göre ayarlanmış fiyatlar
+- **US CPI Enflasyon Ayarlı Fiyatlar**: **YENİ**: US CPI kullanarak belirli bir baz tarihe göre enflasyon ayarlı "reel" fiyatlar
 
 #### Kombinasyon Seçenekleri:
 
@@ -225,6 +269,14 @@ python big_mac_analysis.py --add-adjusted-global  # Ham vs GDP-adjusted Global
 python big_mac_analysis.py --adjusted-turkey --add-adjusted-global  # GDP-adjusted vs GDP-adjusted (en adil karşılaştırma)
 ```
 
+**4. YENİ: US CPI Enflasyon Ayarlı Analizler**:
+```bash
+python big_mac_analysis.py --enf-adjusted  # Sadece Türkiye enflasyon ayarlı
+python big_mac_analysis.py --enf-adjusted --add-global-average  # Türkiye + Global (ikisi de enflasyon ayarlı)
+python big_mac_analysis.py --enf-adjusted --base-date 2020-01-01  # Özel baz tarih ile
+python big_mac_analysis.py --adjusted-turkey --enf-adjusted  # GDP + Enflasyon ayarlı kombine
+```
+
 #### Görsel Özellikler:
 - **Türkiye Verileri**: Kırmızı çizgi, daire işaretçiler
 - **Global Veriler**: Yeşil çizgi, kare işaretçiler
@@ -235,8 +287,11 @@ python big_mac_analysis.py --adjusted-turkey --add-adjusted-global  # GDP-adjust
 #### Dosya Adlandırma:
 - `Big_Mac_Dolar_Fiyatlari_YYYYMMDD.png` - Ham Türkiye
 - `Big_Mac_Dolar_Fiyatlari_adjusted_YYYYMMDD.png` - GDP-adjusted Türkiye
+- `Big_Mac_Dolar_Fiyatlari_inflation_adjusted_YYYYMMDD.png` - **YENİ**: US CPI enflasyon ayarlı Türkiye
 - `Big_Mac_Dolar_Fiyatlari_global_adjusted_YYYYMMDD.png` - Ham Türkiye + GDP-adjusted Global
 - `Big_Mac_Dolar_Fiyatlari_adjusted_global_adjusted_YYYYMMDD.png` - GDP-adjusted Türkiye + GDP-adjusted Global
+- `Big_Mac_Dolar_Fiyatlari_adjusted_inflation_adjusted_YYYYMMDD.png` - **YENİ**: GDP + US CPI enflasyon ayarlı Türkiye
+- `Big_Mac_Dolar_Fiyatlari_inflation_adjusted_global_adjusted_YYYYMMDD.png` - **YENİ**: US CPI Türkiye + GDP Global
 
 #### **Özellikler**:
 - 6 aylık Big Mac verilerini aylık hale genişletir (her veriyi bir sonraki veri noktasına kadar tekrarlar)
@@ -245,7 +300,11 @@ python big_mac_analysis.py --adjusted-turkey --add-adjusted-global  # GDP-adjust
 - Dinamik grafik etiketleme (veri yoğunluğuna göre)
 - **YENİ**: Global ortalama hesaplama ve karşılaştırma
 - **YENİ**: GDP-adjusted fiyat analizi (satın alma gücü paritesi)
+- **YENİ**: US CPI ile enflasyon ayarlı "reel" fiyat analizi
+- **YENİ**: Kombine ayarlama (GDP + Enflasyon)
+- **YENİ**: Esnek baz tarih seçimi (enflasyon ayarlaması için)
 - **YENİ**: Türkiye vs Global karşılaştırmalı istatistikler
+- **YENİ**: Otomatik FRED API entegrasyonu (us_enf.py üzerinden)
 
 #### Örnek Kullanımlar:
 
@@ -261,6 +320,21 @@ python big_mac_analysis.py --adjusted-turkey --save
 
 # En adil karşılaştırma: GDP-adjusted vs GDP-adjusted
 python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --save
+
+# YENİ: US CPI enflasyon ayarlı analiz
+python big_mac_analysis.py --enf-adjusted --save
+
+# YENİ: Enflasyon ayarlı + Global karşılaştırma
+python big_mac_analysis.py --enf-adjusted --add-global-average --save
+
+# YENİ: Özel baz tarih ile enflasyon ayarlı
+python big_mac_analysis.py --enf-adjusted --base-date 2020-01-01 --save
+
+# YENİ: Kombine ayarlama (GDP + Enflasyon)
+python big_mac_analysis.py --adjusted-turkey --enf-adjusted --save
+
+# YENİ: En kapsamlı karşılaştırma
+python big_mac_analysis.py --adjusted-turkey --enf-adjusted --add-adjusted-global --save
 
 # Özel tarih aralığı ile karşılaştırma
 python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --start_date 01-01-2020 --end_date 01-01-2024 --save
@@ -371,8 +445,20 @@ python big_mac_analysis.py --adjusted-turkey --save
 # Ham Türkiye vs GDP-adjusted Global
 python big_mac_analysis.py --add-adjusted-global --save
 
+# YENİ: US CPI enflasyon ayarlı Türkiye analizi
+python big_mac_analysis.py --enf-adjusted --save
+
+# YENİ: Enflasyon ayarlı + Global ortalama
+python big_mac_analysis.py --enf-adjusted --add-global-average --save
+
+# YENİ: Triple ayarlama (GDP + Enflasyon + Global)
+python big_mac_analysis.py --adjusted-turkey --enf-adjusted --add-adjusted-global --save
+
 # Özel tarih aralığı ile kapsamlı analiz
 python big_mac_analysis.py --adjusted-turkey --add-adjusted-global --start_date 01-01-2020 --end_date 01-01-2024 --save --verbose
+
+# YENİ: Enflasyon ayarlı özel baz tarih ile
+python big_mac_analysis.py --enf-adjusted --base-date 2020-01-01 --start_date 01-01-2020 --end_date 01-01-2024 --save
 ```
 
 ### Ev Fiyat Endeksi USD Bazlı Analizi
@@ -407,6 +493,25 @@ Bu komut, 2015-2025 dönemini analiz eder ve kapsamlı üç panel karşılaştı
 - **Big Mac Entegrasyonu**: REDK analizi ile Big Mac küresel karşılaştırması tek grafikte
 - **Türkiye vs Global Positioning**: Türkiye'nin küresel Big Mac pazarındaki konumu
 
+### **YENİ**: US CPI Enflasyon Ayarlı Analiz Sistemi
+- **Reel Fiyat Hesaplama**: US CPI verileri ile "gerçek" satın alma gücü analizi
+- **Esnek Baz Tarih**: Kullanıcı tanımlı baz tarih veya otomatik ilk tarih
+- **Otomatik API Entegrasyonu**: FRED API üzerinden güncel CPI verileri
+- **Kombine Ayarlama**: GDP + Enflasyon ayarlaması aynı anda
+- **Global Uyumluluk**: Hem Türkiye hem global veriler için enflasyon ayarlaması
+
+#### Enflasyon Ayarlaması Nasıl Çalışır?
+```
+Ayarlı Fiyat = Orijinal Fiyat × (Baz Tarih CPI / Mevcut Tarih CPI)
+```
+
+**Örnek**: 2023'te $4.50 olan Big Mac, 2020 baz yılına göre ne kadar?
+- 2020 CPI: 258.8
+- 2023 CPI: 307.0
+- Ayarlı Fiyat: $4.50 × (258.8/307.0) = $3.79
+
+Bu, 2023'teki $4.50'ın 2020 satın alma gücü olarak $3.79'a eşit olduğunu gösterir.
+
 ### Gelişmiş Dosya Yönetimi
 - **Akıllı Dosya Adlandırma**: Kullanılan parametrelere göre otomatik dosya adlandırma
 - **Versiyonlu Çıktılar**: Ham, adjusted, global varyantları için farklı dosya isimleri
@@ -416,6 +521,11 @@ Bu komut, 2015-2025 dönemini analiz eder ve kapsamlı üç panel karşılaştı
 - TÜFE ve REDK verileri: TCMB EVDS API'si
 - ENAG verileri: Enflasyon Araştırma Grubu
 - USD/TRY verileri: TCMB EVDS API'si
+- **YENİ**: US CPI verileri: [St. Louis Federal Reserve (FRED) API](https://fred.stlouisfed.org/docs/api/fred/)
+  - FRED API anahtarı gereklidir (ücretsiz)
+  - Consumer Price Index for All Urban Consumers (CPIAUCSL)
+  - Aylık CPI verileri (1947'den günümüze)
+  - Enflasyon ayarlı fiyat hesaplamaları için kullanılır
 - Big Mac Endeksi: [The Economist Big Mac Index](https://github.com/TheEconomist/big-mac-data)
   - Resmi Big Mac Index veri seti ve metodolojisi
   - MIT lisansı altında açık kaynak
@@ -432,7 +542,8 @@ EconomicalDataTurkey/
 ├── tufe_filter.py          # TÜFE veri filtreleme yardımcıları
 ├── redk.py                 # Reel Efektif Döviz Kuru analizi
 ├── enag_subs_tufe_2.py     # ENAG-TÜFE/2 analizi
-├── big_mac_analysis.py     # Big Mac Endeksi analizi (YENİ: Global karşılaştırma)
+├── big_mac_analysis.py     # Big Mac Endeksi analizi (YENİ: Global karşılaştırma + Enflasyon ayarlı)
+├── us_enf.py               # YENİ: US CPI/Enflasyon verisi (FRED API)
 ├── tcmb_fiyat_usd_analysis.py # Ev fiyat endeksi USD bazlı analiz
 ├── big-mac-data/           # Big Mac veri klasörü
 │   └── output-data/
@@ -443,8 +554,11 @@ EconomicalDataTurkey/
 │   ├── REDK_Kumulatif_Carpim_[tarih].png
 │   ├── Big_Mac_Dolar_Fiyatlari_[tarih].png
 │   ├── Big_Mac_Dolar_Fiyatlari_adjusted_[tarih].png     # YENİ
+│   ├── Big_Mac_Dolar_Fiyatlari_inflation_adjusted_[tarih].png  # YENİ: US CPI enflasyon ayarlı
 │   ├── Big_Mac_Dolar_Fiyatlari_global_adjusted_[tarih].png  # YENİ
 │   ├── Big_Mac_Dolar_Fiyatlari_adjusted_global_adjusted_[tarih].png  # YENİ
+│   ├── Big_Mac_Dolar_Fiyatlari_adjusted_inflation_adjusted_[tarih].png  # YENİ: GDP + US CPI
+│   ├── Big_Mac_Dolar_Fiyatlari_inflation_adjusted_global_adjusted_[tarih].png  # YENİ: US CPI + Global GDP
 │   ├── EvFiyat_TL_USD_Karsilastirma_[tarih].png
 │   └── EvFiyat_USD_Endeksi_[tarih].png
 ├── Figure_1.png            # Örnek çıktı görseli
